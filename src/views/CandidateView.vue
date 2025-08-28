@@ -95,9 +95,6 @@ onMounted(() => {
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Navigation breadcrumbs -->
       <nav class="flex items-center space-x-2 text-sm text-gray-500 mb-6 animate-fade-in">
-        <router-link to="/" class="hover:text-blue-600 transition-colors duration-200">
-          Главная
-        </router-link>
         <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
         </svg>
