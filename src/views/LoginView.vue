@@ -34,13 +34,28 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 flex flex-col">
+  <div class="min-h-screen bg-gray-50 flex flex-col relative overflow-hidden">
+    <!-- Full-screen background image -->
+    <div class="absolute inset-0 pointer-events-none">
+      <!-- WebP background image with fallback -->
+      <div
+        class="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-gray-100 opacity-60"
+      ></div>
+      <div
+        class="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40"
+        style="background-image: url('/767.webp')"
+      ></div>
+
+      <!-- Subtle overlay for better text readability -->
+      <div class="absolute inset-0 bg-white/20 backdrop-blur-[0.5px]"></div>
+    </div>
+
+    <!-- Decorative elements -->
+
     <!-- Main content -->
-    <div
-      class="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 relative overflow-hidden"
-    >
+    <div class="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 relative z-10">
       <!-- Login form -->
-      <div class="w-full max-w-md relative z-10">
+      <div class="w-full max-w-md relative">
         <div
           class="transition-all duration-1000 transform"
           :class="isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'"
@@ -50,7 +65,7 @@ onMounted(() => {
             <div
               class="inline-flex items-center justify-center w-16 h-16 bg-blue-500 rounded-full mb-6 shadow-lg"
             >
-              <span class="text-white font-bold text-xl">hr</span>
+              <span class="text-white font-bold text-xl">AI hr</span>
             </div>
             <h1 class="text-2xl font-semibold text-gray-900">Вход</h1>
           </div>
@@ -64,10 +79,10 @@ onMounted(() => {
             >
               <div
                 :class="[
-                  'flex items-center p-4 rounded-2xl border-2 transition-all duration-200',
+                  'flex items-center p-4 rounded-2xl border-2 transition-all duration-200 backdrop-blur-sm',
                   selectedProfile === 'moderator'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 bg-white hover:border-gray-300',
+                    ? 'border-blue-500 bg-blue-50/80'
+                    : 'border-gray-200 bg-white/80 hover:border-gray-300',
                 ]"
               >
                 <div class="flex-shrink-0 mr-4">
@@ -88,35 +103,54 @@ onMounted(() => {
                   </div>
                 </div>
                 <div class="flex-1">
-                  <div class="text-base font-medium text-gray-900">Я модератор</div>
+                  <div class="text-base font-medium text-gray-900">Я модератор AI HR</div>
                   <div class="text-sm text-gray-500">Панель модератора</div>
                 </div>
               </div>
             </div>
 
-            <!-- Job seeker profile (disabled) -->
+            <!-- Employee profile (disabled) -->
             <div class="relative opacity-50">
-              <div class="flex items-center p-4 rounded-2xl border-2 border-gray-200 bg-gray-50">
+              <div
+                class="flex items-center p-4 rounded-2xl border-2 border-gray-200 bg-gray-50/80 backdrop-blur-sm"
+              >
                 <div class="flex-shrink-0 mr-4">
                   <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                    <!-- Enhanced professional employee icon -->
                     <svg
                       class="w-6 h-6 text-gray-400"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
+                      stroke-width="1.5"
                     >
+                      <!-- Head -->
+                      <circle cx="12" cy="7" r="3" stroke-linecap="round" stroke-linejoin="round" />
+                      <!-- Shoulders/Body -->
                       <path
+                        d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"
                         stroke-linecap="round"
                         stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2V6"
                       />
+                      <!-- Briefcase/Professional element -->
+                      <rect
+                        x="8"
+                        y="14"
+                        width="8"
+                        height="3"
+                        rx="1"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        opacity="0.6"
+                      />
+                      <!-- Tie accent -->
+                      <path d="M12 10v4" stroke-linecap="round" stroke-width="1" />
                     </svg>
                   </div>
                 </div>
                 <div class="flex-1">
-                  <div class="text-base font-medium text-gray-500">Я ищу сотрудников</div>
-                  <div class="text-sm text-gray-400">Профиль работодателя</div>
+                  <div class="text-base font-medium text-gray-500">Я штатный сотрудник</div>
+                  <div class="text-sm text-gray-400">Профиль сотрудника</div>
                 </div>
               </div>
             </div>
@@ -133,7 +167,7 @@ onMounted(() => {
                 type="email"
                 required
                 placeholder="Email или телефон"
-                class="block w-full px-4 py-4 text-base border border-gray-300 rounded-2xl placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                class="block w-full px-4 py-4 text-base border border-gray-300 rounded-2xl placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/90 backdrop-blur-sm"
               />
             </div>
 
@@ -146,7 +180,7 @@ onMounted(() => {
                 type="password"
                 required
                 placeholder="Пароль"
-                class="block w-full px-4 py-4 text-base border border-gray-300 rounded-2xl placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                class="block w-full px-4 py-4 text-base border border-gray-300 rounded-2xl placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/90 backdrop-blur-sm"
               />
             </div>
 
@@ -154,7 +188,7 @@ onMounted(() => {
             <button
               type="submit"
               :disabled="isLoading"
-              class="w-full flex justify-center py-4 px-4 border border-transparent rounded-2xl shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              class="w-full flex justify-center py-4 px-4 border border-transparent rounded-2xl shadow-sm text-base font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 backdrop-blur-sm"
             >
               <span v-if="!isLoading">Войти</span>
               <div v-else class="flex items-center">
@@ -186,8 +220,8 @@ onMounted(() => {
     </div>
 
     <!-- Footer -->
-    <footer class="py-6 text-center">
-      <p class="text-sm text-gray-500">© 2025 HDD[M2]</p>
+    <footer class="py-6 text-center relative z-10">
+      <p class="text-sm text-gray-500">2025 HDD[M2]</p>
     </footer>
   </div>
 </template>
@@ -214,7 +248,37 @@ onMounted(() => {
   }
 }
 
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(-10px) rotate(180deg);
+    opacity: 0.8;
+  }
+}
+
 .animate-bounce {
   animation: bounce 3s infinite;
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+/* Enhanced backdrop blur support */
+@supports (backdrop-filter: blur(8px)) {
+  .backdrop-blur-sm {
+    backdrop-filter: blur(8px);
+  }
+}
+
+/* Fallback for browsers that don't support backdrop-filter */
+@supports not (backdrop-filter: blur(8px)) {
+  .backdrop-blur-sm {
+    background-color: rgba(255, 255, 255, 0.9);
+  }
 }
 </style>
