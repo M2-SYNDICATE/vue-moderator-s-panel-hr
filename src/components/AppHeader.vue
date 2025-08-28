@@ -52,9 +52,9 @@ if (typeof window !== 'undefined') {
               >
                 <!-- Logo placeholder - replace with actual logo -->
                 <div
-                  class="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center shadow-sm"
+                  class="w-8 h-8 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center shadow-sm"
                 >
-                  <span class="text-white font-bold text-sm">hh</span>
+                  <span class="text-white font-bold text-sm">hr</span>
                 </div>
                 <div class="hidden sm:block">
                   <h1 class="text-xl font-semibold text-gray-900 tracking-tight">
