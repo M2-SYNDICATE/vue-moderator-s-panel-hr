@@ -37,7 +37,7 @@ if (typeof window !== 'undefined') {
 </script>
 
 <template>
-  <header class="sticky top-0 z-50 w-full">
+  <header class="sticky top-0 z-51 w-full">
     <!-- Backdrop blur background -->
     <div class="absolute inset-0 bg-white/80 backdrop-blur-md border-b border-gray-200/50"></div>
 
