@@ -82,14 +82,6 @@ const candidates = ref<Candidate[]>([
     comments: 'Не хватает опыта с микросервисами',
     callDate: '2024-01-18T11:00:00Z',
   },
-  {
-    id: 4,
-    fullName: 'Козлова Мария Викторовна',
-    vacancyId: 1,
-    status: 'not_suitable',
-    comments: 'Не хватает опыта с микросервисами',
-    callDate: '2024-01-18T11:00:00Z',
-  },
 ])
 
 // Computed properties
