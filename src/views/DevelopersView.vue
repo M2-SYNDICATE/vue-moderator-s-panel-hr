@@ -5,26 +5,32 @@ import { ref, onMounted, onUnmounted } from 'vue'
 const developers = ref([
   {
     id: 1,
-    name: 'Богдан Д.',
+    name: 'Далиба Богдан',
     role: 'Frontend Developer',
     description:
-      'Эксперт в создании масштабируемых веб-приложений с использованием современных технологий. Специализируется на Vue.js, Node.js и архитектуре микросервисов.',
+      'Мастер пользовательского опыта и современного фронтенда. Создает интуитивные интерфейсы и оптимизирует производительность веб-приложений.',
     skills: ['Vue.js', 'Nuxt.js', 'TypeScript', 'Node.js', 'Tailwind CSS', 'JS', 'CSS'],
     gradient: 'from-blue-500 to-purple-600',
+    avatar: '/images/avatars/bogdan.webp',
+    github: 'https://github.com/Hahora',
+    initials: 'БД',
   },
   {
     id: 2,
-    name: 'Андрей Б.',
+    name: 'Буренок Андрей',
     role: 'Backend Developer',
     description:
-      'Мастер пользовательского опыта и современного фронтенда. Создает интуитивные интерфейсы и оптимизирует производительность веб-приложений.',
+      'Опытный бэкенд-разработчик с глубоким пониманием архитектуры серверной части, построения API и интеграции с внешними системами. Уверенно работает с базами данных. Обеспечивая стабильную и масштабируемую работу backend-части проекта.',
     skills: ['Python', 'FastAPI', 'Flask', 'SQLAlchemy', 'PostgreSQL', 'Docker', 'ML'],
     gradient: 'from-emerald-500 to-teal-600',
+    avatar: '/images/avatars/andrey.webp',
+    github: 'https://github.com/andrey-backend',
+    initials: 'АБ',
   },
   {
     id: 3,
-    name: 'Иван А.',
-    role: 'Mashine Learning Developer',
+    name: 'Алипатов Иван',
+    role: 'Machine Learning Developer',
     description:
       'Специалист по машинному обучению с упором на продакшн-решения. Разрабатывает и внедряет ML-модели, оптимизируя их для высокой производительности и масштабируемости. Уверенно работает с бэкендом и ML-инфраструктурой.',
     skills: [
@@ -40,11 +46,14 @@ const developers = ref([
       'Kubernetes',
     ],
     gradient: 'from-red-500 to-teal-600',
+    avatar: '/images/avatars/ivan.webp',
+    github: 'https://github.com/ivan-ml',
+    initials: 'ИА',
   },
   {
     id: 4,
-    name: 'Денис Б.',
-    role: 'Mashine Learning Developer',
+    name: 'Бражко Денис',
+    role: 'Machine Learning Developer',
     description:
       'Руководитель команды машинного обучения с опытом построения end-to-end ML-пайплайнов и выведения моделей в прод. Организует процесс разработки, менторит разработчиков.',
     skills: [
@@ -61,6 +70,9 @@ const developers = ref([
       'Model Deployment',
     ],
     gradient: 'from-yellow-500 to-teal-600',
+    avatar: '/images/avatars/denis.webp',
+    github: 'https://github.com/denis-ml-lead',
+    initials: 'ДБ',
   },
 ])
 
@@ -340,8 +352,64 @@ onUnmounted(() => {
               class="absolute inset-0 bg-gradient-to-r from-cyan-500/5 via-purple-500/5 to-pink-500/5 opacity-0 group-hover:opacity-100 rounded-3xl transition-opacity duration-500 blur-xl"
             ></div>
 
-            <!-- Info -->
+            <!-- Avatar Section -->
             <div class="relative z-10 text-center mb-6">
+              <div class="relative inline-block mb-4">
+                <!-- Avatar Container -->
+                <div
+                  class="relative w-24 h-24 mx-auto rounded-full overflow-hidden ring-4 ring-white/20 hover:ring-white/40 transition-all duration-300 shadow-2xl"
+                  :style="{
+                    transform: `translateZ(${isMouseMoving ? 15 : 0}px) rotateY(${mouseX * 3}deg) rotateX(${mouseY * 3}deg)`,
+                  }"
+                >
+                  <!-- Avatar Image -->
+                  <img
+                    :src="dev.avatar"
+                    :alt="`${dev.name} Avatar`"
+                    class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                    @error="
+                      (e) => {
+                        e.target.style.display = 'none'
+                        e.target.nextElementSibling.style.display = 'flex'
+                      }
+                    "
+                  />
+
+                  <!-- Fallback Avatar with Initials -->
+                  <div
+                    :class="`absolute inset-0 bg-gradient-to-br ${dev.gradient} flex items-center justify-center text-white font-bold text-xl`"
+                    style="display: none"
+                  >
+                    {{ dev.initials }}
+                  </div>
+
+                  <!-- Gradient Border Animation -->
+                  <div
+                    :class="`absolute inset-0 rounded-full bg-gradient-to-r ${dev.gradient} opacity-0 group-hover:opacity-20 transition-opacity duration-500 animate-pulse`"
+                  ></div>
+                </div>
+
+                <!-- GitHub Link -->
+                <a
+                  :href="dev.github"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="absolute -bottom-2 -right-2 w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-full flex items-center justify-center text-white shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-300 group/github"
+                  title="GitHub Profile"
+                >
+                  <svg
+                    class="w-5 h-5 group-hover/github:rotate-12 transition-transform duration-300"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+                    />
+                  </svg>
+                </a>
+              </div>
+
+              <!-- Name and Role -->
               <h3 class="text-3xl font-bold text-white mb-2 drop-shadow-lg hover-text">
                 {{ dev.name }}
               </h3>
@@ -371,6 +439,48 @@ onUnmounted(() => {
                   {{ skill }}
                 </span>
               </div>
+            </div>
+
+            <!-- Contact Links -->
+            <div class="relative z-10 flex justify-center space-x-4">
+              <!-- GitHub Button -->
+              <a
+                :href="dev.github"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center px-4 py-2 bg-gray-800/50 hover:bg-gray-700/70 text-white text-sm font-medium rounded-xl backdrop-blur-sm border border-gray-600/30 hover:border-gray-500/50 transition-all duration-300 group/btn shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <svg
+                  class="w-4 h-4 mr-2 group-hover/btn:rotate-12 transition-transform duration-300"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+                  />
+                </svg>
+                GitHub
+              </a>
+
+              <!-- Portfolio/Contact Button -->
+              <button
+                class="inline-flex items-center px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-xl backdrop-blur-sm border border-white/20 hover:border-white/30 transition-all duration-300 group/btn shadow-lg hover:shadow-xl transform hover:scale-105"
+              >
+                <svg
+                  class="w-4 h-4 mr-2 group-hover/btn:rotate-12 transition-transform duration-300"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+                Связаться
+              </button>
             </div>
           </div>
         </div>
@@ -773,5 +883,68 @@ onUnmounted(() => {
 .hover-logo {
   will-change: transform;
   backface-visibility: hidden;
+}
+
+/* Avatar hover effects */
+.avatar-container:hover .avatar-image {
+  transform: scale(1.1) rotateY(15deg);
+}
+
+/* GitHub button hover effects */
+.github-btn:hover {
+  background: linear-gradient(135deg, #24292e 0%, #1a1e22 100%);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* Enhanced 3D effects for avatars */
+.avatar-3d {
+  transform-style: preserve-3d;
+  transition: all 0.3s ease-out;
+}
+
+.avatar-3d:hover {
+  transform: rotateY(15deg) rotateX(10deg) translateZ(20px);
+}
+
+/* Improved button animations */
+.contact-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.contact-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.contact-btn:hover::before {
+  left: 100%;
+}
+
+/* Enhanced skill tags */
+.skill-tag {
+  position: relative;
+  overflow: hidden;
+}
+
+.skill-tag::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.3s;
+}
+
+.skill-tag:hover::before {
+  left: 100%;
 }
 </style>
