@@ -35,7 +35,8 @@ onMounted(() => {
                 ></div>
 
                 <!-- Main text -->
-                <div
+                <router-link
+                  to="/developers"
                   class="relative px-4 py-2 rounded-lg transition-all duration-200 group-hover:bg-white/30"
                 >
                   <span class="text-sm font-light text-gray-500 tracking-wide">crafted by</span>
@@ -44,7 +45,7 @@ onMounted(() => {
                   >
                     HDD[M2]
                   </span>
-                </div>
+                </router-link>
               </div>
 
               <!-- Animated underline -->

@@ -47,16 +47,6 @@ const vacancies = ref<Vacancy[]>([
     title: 'DevOps Engineer',
     fileName: 'devops_requirements.pdf',
   },
-  {
-    id: 3,
-    title: 'DevOps Engineer',
-    fileName: 'devops_requirements.pdf',
-  },
-  {
-    id: 3,
-    title: 'DevOps Engineer',
-    fileName: 'devops_requirements.pdf',
-  },
 ])
 
 // Candidates data

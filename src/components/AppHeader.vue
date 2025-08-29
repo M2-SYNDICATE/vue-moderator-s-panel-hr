@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import router from '@/router'
 import { ref } from 'vue'
 
 const user = ref({
@@ -47,7 +48,8 @@ if (typeof window !== 'undefined') {
           <!-- Logo section -->
           <div class="flex items-center space-x-4">
             <div class="flex-shrink-0 group">
-              <div
+              <router-link
+                to="/"
                 class="flex items-center space-x-3 transition-transform duration-200 group-hover:scale-105"
               >
                 <!-- Logo placeholder - replace with actual logo -->
@@ -61,7 +63,7 @@ if (typeof window !== 'undefined') {
                     Панель модератора HR
                   </h1>
                 </div>
-              </div>
+              </router-link>
             </div>
           </div>
 
