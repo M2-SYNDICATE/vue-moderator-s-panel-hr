@@ -1,33 +1,37 @@
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
 
-interface CaseForm {
-  title: string
-  vacancy: string
-  callLink: string
+interface CandidateForm {
+  fullName: string
+  vacancyId: number | null
   resume: File | null
   comments: string
 }
 
+interface Vacancy {
+  id: number
+  title: string
+}
+
 interface Props {
   isOpen: boolean
+  vacancies: Vacancy[]
 }
 
 interface Emits {
   (e: 'close'): void
   (
-    e: 'case-created',
-    case_: Omit<CaseForm, 'resume'> & { callDate: string; status: 'created' },
+    e: 'candidate-created',
+    candidate: Omit<CandidateForm, 'resume'> & { status: 'suitable' | 'not_suitable' },
   ): void
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const form = reactive<CaseForm>({
-  title: '',
-  vacancy: '',
-  callLink: '',
+const form = reactive<CandidateForm>({
+  fullName: '',
+  vacancyId: null,
   resume: null,
   comments: '',
 })
@@ -35,19 +39,6 @@ const form = reactive<CaseForm>({
 const isDragOver = ref(false)
 const fileInputRef = ref<HTMLInputElement>()
 const isVisible = ref(false)
-
-const vacancyOptions = [
-  'Senior Java Developer',
-  'Frontend Developer',
-  'Backend Developer',
-  'DevOps Engineer',
-  'QA Engineer',
-  'Product Manager',
-  'UI/UX Designer',
-]
-
-const showVacancyDropdown = ref(false)
-const filteredVacancies = ref(vacancyOptions)
 
 // Watch for modal open/close to handle animations
 watch(
@@ -58,27 +49,11 @@ watch(
     } else {
       setTimeout(() => {
         isVisible.value = false
-      }, 300) // Match transition duration
+      }, 300)
     }
   },
   { immediate: true },
 )
-
-const filterVacancies = () => {
-  if (!form.vacancy) {
-    filteredVacancies.value = vacancyOptions
-  } else {
-    filteredVacancies.value = vacancyOptions.filter((option) =>
-      option.toLowerCase().includes(form.vacancy.toLowerCase()),
-    )
-  }
-  showVacancyDropdown.value = true
-}
-
-const selectVacancy = (vacancy: string) => {
-  form.vacancy = vacancy
-  showVacancyDropdown.value = false
-}
 
 const handleDragOver = (e: DragEvent) => {
   e.preventDefault()
@@ -115,29 +90,26 @@ const removeFile = () => {
 }
 
 const submitForm = () => {
-  if (!form.title || !form.vacancy) {
+  if (!form.fullName || !form.vacancyId) {
     alert('Пожалуйста, заполните обязательные поля')
     return
   }
 
-  const newCase = {
-    title: form.title,
-    vacancy: form.vacancy,
-    callLink: form.callLink,
+  const newCandidate = {
+    fullName: form.fullName,
+    vacancyId: form.vacancyId,
     comments: form.comments,
-    callDate: new Date().toISOString().split('T')[0],
-    status: 'created' as const,
+    status: 'suitable' as const,
   }
 
-  emit('case-created', newCase)
+  emit('candidate-created', newCandidate)
   resetForm()
 }
 
 const resetForm = () => {
   Object.assign(form, {
-    title: '',
-    vacancy: '',
-    callLink: '',
+    fullName: '',
+    vacancyId: null,
     resume: null,
     comments: '',
   })
@@ -163,7 +135,7 @@ const closeModal = () => {
       leave-to-class="opacity-0"
     >
       <div v-if="isOpen" class="fixed inset-0 z-50 overflow-y-auto">
-        <!-- Background overlay with blur effect -->
+        <!-- Background overlay -->
         <div
           class="fixed inset-0 bg-black/40 backdrop-blur-sm transition-all duration-300"
           @click="closeModal"
@@ -187,7 +159,7 @@ const closeModal = () => {
               <!-- Header -->
               <div class="relative px-6 pt-6 pb-4">
                 <div class="flex items-center justify-between">
-                  <h3 class="text-xl font-semibold text-gray-900">Создать новое дело</h3>
+                  <h3 class="text-xl font-semibold text-gray-900">Добавить кандидата</h3>
                   <button
                     @click="closeModal"
                     class="rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -206,80 +178,42 @@ const closeModal = () => {
 
               <!-- Form -->
               <form @submit.prevent="submitForm" class="px-6 pb-6 space-y-5">
-                <!-- Title -->
+                <!-- Full Name -->
                 <div class="space-y-2">
-                  <label for="title" class="block text-sm font-medium text-gray-700">
-                    Название дела <span class="text-red-500">*</span>
+                  <label for="fullName" class="block text-sm font-medium text-gray-700">
+                    ФИО кандидата <span class="text-red-500">*</span>
                   </label>
                   <input
-                    id="title"
-                    v-model="form.title"
+                    id="fullName"
+                    v-model="form.fullName"
                     type="text"
-                    placeholder="Иванов Иван / Java Developer"
+                    placeholder="Иванов Иван Иванович"
                     required
                     class="block w-full rounded-xl border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 transition-all duration-200 sm:text-sm sm:leading-6"
                   />
                 </div>
 
-                <!-- Vacancy -->
-                <div class="relative space-y-2">
+                <!-- Vacancy Selection -->
+                <div class="space-y-2">
                   <label for="vacancy" class="block text-sm font-medium text-gray-700">
                     Вакансия <span class="text-red-500">*</span>
                   </label>
-                  <input
+                  <select
                     id="vacancy"
-                    v-model="form.vacancy"
-                    type="text"
-                    placeholder="Выберите или введите вакансию"
+                    v-model="form.vacancyId"
                     required
-                    @input="filterVacancies"
-                    @focus="showVacancyDropdown = true"
-                    @blur="setTimeout(() => (showVacancyDropdown = false), 200)"
-                    class="block w-full rounded-xl border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 transition-all duration-200 sm:text-sm sm:leading-6"
-                  />
-
-                  <!-- Dropdown -->
-                  <Transition
-                    enter-active-class="transition duration-200 ease-out"
-                    enter-from-class="transform scale-95 opacity-0"
-                    enter-to-class="transform scale-100 opacity-100"
-                    leave-active-class="transition duration-150 ease-in"
-                    leave-from-class="transform scale-100 opacity-100"
-                    leave-to-class="transform scale-95 opacity-0"
+                    class="block w-full rounded-xl border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 transition-all duration-200 sm:text-sm sm:leading-6"
                   >
-                    <div
-                      v-if="showVacancyDropdown && filteredVacancies.length > 0"
-                      class="absolute z-20 w-full mt-1 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 max-h-60 overflow-auto"
-                    >
-                      <div
-                        v-for="vacancy in filteredVacancies"
-                        :key="vacancy"
-                        @click="selectVacancy(vacancy)"
-                        class="px-4 py-3 cursor-pointer hover:bg-gray-50 text-sm text-gray-900 transition-colors duration-150 first:rounded-t-xl last:rounded-b-xl"
-                      >
-                        {{ vacancy }}
-                      </div>
-                    </div>
-                  </Transition>
-                </div>
-
-                <!-- Call Link -->
-                <div class="space-y-2">
-                  <label for="callLink" class="block text-sm font-medium text-gray-700">
-                    Ссылка на созвон
-                  </label>
-                  <input
-                    id="callLink"
-                    v-model="form.callLink"
-                    type="url"
-                    placeholder="https://meet.google.com/..."
-                    class="block w-full rounded-xl border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 transition-all duration-200 sm:text-sm sm:leading-6"
-                  />
+                    <option value="">Выберите вакансию</option>
+                    <option v-for="vacancy in vacancies" :key="vacancy.id" :value="vacancy.id">
+                      {{ vacancy.title }}
+                    </option>
+                  </select>
                 </div>
 
                 <!-- Resume Upload -->
                 <div class="space-y-2">
-                  <label class="block text-sm font-medium text-gray-700"> Прикрепить резюме </label>
+                  <label class="block text-sm font-medium text-gray-700">Прикрепить резюме</label>
 
                   <div
                     @dragover="handleDragOver"
@@ -378,13 +312,13 @@ const closeModal = () => {
                 <!-- Comments -->
                 <div class="space-y-2">
                   <label for="comments" class="block text-sm font-medium text-gray-700">
-                    Комментарий / заметки
+                    Комментарии
                   </label>
                   <textarea
                     id="comments"
                     v-model="form.comments"
                     rows="3"
-                    placeholder="Дополнительная информация..."
+                    placeholder="Дополнительная информация о кандидате..."
                     class="block w-full rounded-xl border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 transition-all duration-200 sm:text-sm sm:leading-6 resize-none"
                   ></textarea>
                 </div>
@@ -402,7 +336,7 @@ const closeModal = () => {
                     type="submit"
                     class="rounded-xl px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 shadow-sm hover:shadow-md transition-all duration-200"
                   >
-                    Создать дело
+                    Добавить кандидата
                   </button>
                 </div>
               </form>
