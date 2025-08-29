@@ -16,7 +16,7 @@ interface Candidate {
   id: number
   fullName: string
   vacancyId: number
-  status: 'suitable' | 'not_suitable'
+  status: 'suitable' | 'not_suitable' | 'analiz'
   comments?: string
   callDate?: string
 }
@@ -63,7 +63,7 @@ const candidates = ref<Candidate[]>([
     id: 2,
     fullName: 'Петрова Анна Сергеевна',
     vacancyId: 2,
-    status: 'not_suitable',
+    status: 'analiz',
     comments: 'Недостаточно опыта с React',
     callDate: '2024-01-16T10:30:00Z',
   },
@@ -152,13 +152,27 @@ const getVacancyTitle = (vacancyId: number) => {
 }
 
 const getStatusText = (status: string) => {
-  return status === 'suitable' ? 'Подходит' : 'Не подходит'
+  if (status === 'suitable') {
+    return 'Подходит'
+  } else if (status === 'not_suitable') {
+    return 'Не подходит'
+  } else if (status === 'analiz') {
+    return 'Анализируется'
+  } else {
+    return 'Неизвестный статус'
+  }
 }
 
 const getStatusColor = (status: string) => {
-  return status === 'suitable'
-    ? 'bg-green-50 text-green-700 ring-green-600/20'
-    : 'bg-red-50 text-red-700 ring-red-600/20'
+  if (status === 'suitable') {
+    return 'bg-green-50 text-green-700 ring-green-600/20'
+  } else if (status === 'not_suitable') {
+    return 'bg-red-50 text-red-700 ring-red-600/20'
+  } else if (status === 'analiz') {
+    return 'bg-yellow-50 text-yellow-700 ring-yellow-600/20'
+  } else {
+    return 'bg-gray-50 text-gray-700 ring-gray-600/20'
+  }
 }
 
 // Vacancy dropdown methods
