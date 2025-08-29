@@ -287,7 +287,7 @@ onUnmounted(() => {
             }"
           >
             <a href="https://t.me/vash_nik" target="_blank" rel="noopener noreferrer">
-              <img src="/images/m2logo.png" alt="M2 Logo" class="w-15 h-15" />
+              <img src="/images/m2logo.webp" alt="M2 Logo" class="w-15 h-15" />
             </a>
             <!-- Светящийся эффект -->
             <div
@@ -551,7 +551,7 @@ onUnmounted(() => {
             }"
           >
             <a href="https://t.me/vash_nik" target="_blank" rel="noopener noreferrer">
-              <img src="/images/m2logo.png" alt="M2 Logo" class="w-15 h-15" />
+              <img src="/images/m2logo.webp" alt="M2 Logo" class="w-15 h-15" />
             </a>
             <div
               class="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-400/20 animate-pulse"
