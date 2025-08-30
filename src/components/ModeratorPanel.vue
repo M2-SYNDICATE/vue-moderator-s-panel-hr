@@ -721,7 +721,7 @@ if (typeof window !== 'undefined') {
                   <button
                     @click.stop="deleteCandidate(candidate.id)"
                     :disabled="isLoading"
-                    class="text-red-600 hover:text-red-800 font-medium text-sm transition-colors duration-150 disabled:opacity-50"
+                    class="text-red-600 cursor-pointer hover:text-red-800 font-medium text-sm transition-colors duration-150 disabled:opacity-50"
                   >
                     Удалить
                   </button>
@@ -780,7 +780,7 @@ if (typeof window !== 'undefined') {
                 <button
                   @click.stop="deleteCandidate(candidate.id)"
                   :disabled="isLoading"
-                  class="text-red-600 hover:text-red-800 font-medium text-sm transition-colors duration-150 disabled:opacity-50"
+                  class="text-red-600 cursor-pointer hover:text-red-800 font-medium text-sm transition-colors duration-150 disabled:opacity-50"
                 >
                   Удалить
                 </button>
