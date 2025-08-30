@@ -560,7 +560,7 @@ onUnmounted(() => {
         </div>
 
         <h2 class="text-2xl font-bold text-white mb-4 drop-shadow-lg hover-text">
-          Создано при поддержке M2 Syndicatee
+          Создано при поддержке M2 Syndicate
         </h2>
         <p class="text-gray-400 max-w-2xl mx-auto drop-shadow-sm hover-text">
           Мы объединяем талантливых разработчиков для создания выдающихся проектов. Каждое решение
