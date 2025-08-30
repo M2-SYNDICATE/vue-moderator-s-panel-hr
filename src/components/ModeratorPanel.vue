@@ -16,7 +16,8 @@ interface Candidate {
   id: number
   fullName: string
   vacancyId: number
-  status: 'suitable' | 'not_suitable' | 'analiz'
+  resumeAnalysis: 'suitable' | 'not_suitable' | 'analyzing' // Анализ резюме
+  callStatus: 'not_planned' | 'planned' | 'in_progress' | 'completed' // Статус созвона
   comments?: string
   callDate?: string
 }
@@ -29,6 +30,7 @@ const isVacancyDropdownOpen = ref(false)
 const currentPage = ref(1)
 const itemsPerPage = ref(5)
 const isLoading = ref(false)
+const vacancySearchQuery = ref('')
 
 // Vacancies data
 const vacancies = ref<Vacancy[]>([
@@ -55,7 +57,8 @@ const candidates = ref<Candidate[]>([
     id: 1,
     fullName: 'Иванов Иван Иванович',
     vacancyId: 1,
-    status: 'suitable',
+    resumeAnalysis: 'suitable',
+    callStatus: 'completed',
     comments: 'Отличный опыт работы с Spring Framework',
     callDate: '2024-01-15T14:00:00Z',
   },
@@ -63,24 +66,34 @@ const candidates = ref<Candidate[]>([
     id: 2,
     fullName: 'Петрова Анна Сергеевна',
     vacancyId: 2,
-    status: 'analiz',
-    comments: 'Недостаточно опыта с React',
+    resumeAnalysis: 'analyzing',
+    callStatus: 'planned',
+    comments: 'Анализируется опыт с React',
     callDate: '2024-01-16T10:30:00Z',
   },
   {
     id: 3,
     fullName: 'Сидоров Петр Александрович',
     vacancyId: 3,
-    status: 'suitable',
+    resumeAnalysis: 'suitable',
+    callStatus: 'in_progress',
     callDate: '2024-01-17T16:00:00Z',
   },
   {
     id: 4,
     fullName: 'Козлова Мария Викторовна',
     vacancyId: 1,
-    status: 'not_suitable',
+    resumeAnalysis: 'not_suitable',
+    callStatus: 'not_planned',
     comments: 'Не хватает опыта с микросервисами',
-    callDate: '2024-01-18T11:00:00Z',
+  },
+  {
+    id: 5,
+    fullName: 'Смирнов Алексей Петрович',
+    vacancyId: 2,
+    resumeAnalysis: 'suitable',
+    callStatus: 'not_planned',
+    comments: 'Хороший кандидат, нужно запланировать созвон',
   },
 ])
 
@@ -119,14 +132,17 @@ const selectedVacancyTitle = computed(() => {
   return vacancy?.title || 'Все вакансии'
 })
 
-// Methods
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('ru-RU', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  })
-}
+// Фильтрованные вакансии для поиска
+const filteredVacanciesForSearch = computed(() => {
+  if (!vacancySearchQuery.value.trim()) {
+    return vacancies.value
+  }
+  return vacancies.value.filter((vacancy) =>
+    vacancy.title.toLowerCase().includes(vacancySearchQuery.value.toLowerCase()),
+  )
+})
+
+//Methods
 
 const formatDateTime = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('ru-RU', {
@@ -143,39 +159,89 @@ const getVacancyTitle = (vacancyId: number) => {
   return vacancy?.title || 'Неизвестная вакансия'
 }
 
-const getStatusText = (status: string) => {
-  if (status === 'suitable') {
-    return 'Подходит'
-  } else if (status === 'not_suitable') {
-    return 'Не подходит'
-  } else if (status === 'analiz') {
-    return 'Анализируется'
-  } else {
-    return 'Неизвестный статус'
+// Функция для подсветки найденного текста
+const highlightSearchTerm = (text: string, searchTerm: string) => {
+  if (!searchTerm.trim()) return text
+
+  const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+  return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-900 px-1 rounded">$1</mark>')
+}
+
+// Функции для анализа резюме
+const getResumeAnalysisText = (analysis: string) => {
+  switch (analysis) {
+    case 'suitable':
+      return 'Подходит'
+    case 'not_suitable':
+      return 'Не подходит'
+    case 'analyzing':
+      return 'Анализируется'
+    default:
+      return 'Неизвестно'
   }
 }
 
-const getStatusColor = (status: string) => {
-  if (status === 'suitable') {
-    return 'bg-green-50 text-green-700 ring-green-600/20'
-  } else if (status === 'not_suitable') {
-    return 'bg-red-50 text-red-700 ring-red-600/20'
-  } else if (status === 'analiz') {
-    return 'bg-yellow-50 text-yellow-700 ring-yellow-600/20'
-  } else {
-    return 'bg-gray-50 text-gray-700 ring-gray-600/20'
+const getResumeAnalysisColor = (analysis: string) => {
+  switch (analysis) {
+    case 'suitable':
+      return 'bg-green-50 text-green-700 ring-green-600/20'
+    case 'not_suitable':
+      return 'bg-red-50 text-red-700 ring-red-600/20'
+    case 'analyzing':
+      return 'bg-yellow-50 text-yellow-700 ring-yellow-600/20'
+    default:
+      return 'bg-gray-50 text-gray-700 ring-gray-600/20'
   }
+}
+
+// Функции для статуса созвона
+const getCallStatusText = (status: string) => {
+  switch (status) {
+    case 'not_planned':
+      return 'Не запланирован'
+    case 'planned':
+      return 'Запланирован'
+    case 'in_progress':
+      return 'Проходит'
+    case 'completed':
+      return 'Прошел'
+    default:
+      return 'Неизвестно'
+  }
+}
+
+const getCallStatusColor = (status: string) => {
+  switch (status) {
+    case 'not_planned':
+      return 'bg-gray-50 text-gray-700 ring-gray-600/20'
+    case 'planned':
+      return 'bg-blue-50 text-blue-700 ring-blue-600/20'
+    case 'in_progress':
+      return 'bg-yellow-50 text-yellow-700 ring-yellow-600/20'
+    case 'completed':
+      return 'bg-green-50 text-green-700 ring-green-600/20'
+    default:
+      return 'bg-gray-50 text-gray-700 ring-gray-600/20'
+  }
+}
+
+// Проверка, нужно ли показывать прочерк
+const shouldShowDash = (candidate: Candidate) => {
+  return candidate.resumeAnalysis === 'not_suitable'
 }
 
 // Vacancy dropdown methods
 const toggleVacancyDropdown = () => {
   isVacancyDropdownOpen.value = !isVacancyDropdownOpen.value
+  if (!isVacancyDropdownOpen.value) {
+    vacancySearchQuery.value = ''
+  }
 }
 
 const selectVacancy = (vacancyId: number | null) => {
   selectedVacancyId.value = vacancyId
   isVacancyDropdownOpen.value = false
-  currentPage.value = 1 // Reset to first page when filtering
+  currentPage.value = 1
 }
 
 // Modal handlers
@@ -340,7 +406,7 @@ if (typeof window !== 'undefined') {
         </div>
       </div>
 
-      <!-- Vacancy Filter Dropdown -->
+      <!-- Vacancy Filter with Search -->
       <div class="mb-6 animate-slide-up relative" style="z-index: 50">
         <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6">
           <div class="flex items-center justify-between mb-4">
@@ -383,70 +449,174 @@ if (typeof window !== 'undefined') {
             >
               <div
                 v-if="isVacancyDropdownOpen"
-                class="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 max-h-80 overflow-auto"
+                class="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 max-h-80 overflow-hidden"
               >
-                <!-- All Vacancies Option -->
-                <div
-                  @click="selectVacancy(null)"
-                  class="px-4 py-3 cursor-pointer hover:bg-gray-50 text-sm text-gray-900 transition-colors duration-150 first:rounded-t-xl border-b border-gray-100"
-                  :class="{ 'bg-blue-50 text-blue-700': selectedVacancyId === null }"
-                >
-                  <div class="flex items-center justify-between">
-                    <span class="font-medium">Все вакансии</span>
-                    <span class="text-xs text-gray-500">{{ candidates.length }} кандидатов</span>
+                <!-- Search Input -->
+                <div class="p-3 border-b border-gray-100 bg-gray-50/50">
+                  <div class="relative">
+                    <div
+                      class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+                    >
+                      <svg
+                        class="h-4 w-4 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    </div>
+                    <input
+                      v-model="vacancySearchQuery"
+                      type="text"
+                      placeholder="Поиск вакансий..."
+                      class="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white"
+                      @click.stop
+                    />
+                    <Transition
+                      enter-active-class="transition duration-150 ease-out"
+                      enter-from-class="opacity-0 scale-95"
+                      enter-to-class="opacity-100 scale-100"
+                      leave-active-class="transition duration-100 ease-in"
+                      leave-from-class="opacity-100 scale-100"
+                      leave-to-class="opacity-0 scale-95"
+                    >
+                      <button
+                        v-if="vacancySearchQuery"
+                        @click.stop="vacancySearchQuery = ''"
+                        class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors duration-150"
+                      >
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </Transition>
                   </div>
                 </div>
 
-                <!-- Individual Vacancies -->
-                <div
-                  v-for="vacancy in vacancies"
-                  :key="vacancy.id"
-                  class="px-4 py-3 hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100 last:border-b-0 last:rounded-b-xl"
-                  :class="{ 'bg-blue-50': selectedVacancyId === vacancy.id }"
-                >
-                  <div class="flex items-center justify-between">
+                <!-- Dropdown Content -->
+                <div class="max-h-64 overflow-auto">
+                  <!-- All Vacancies Option (показываем только если нет поиска) -->
+                  <div
+                    v-if="!vacancySearchQuery.trim()"
+                    @click="selectVacancy(null)"
+                    class="px-4 py-3 cursor-pointer hover:bg-gray-50 text-sm text-gray-900 transition-colors duration-150 border-b border-gray-100"
+                    :class="{ 'bg-blue-50 text-blue-700': selectedVacancyId === null }"
+                  >
+                    <div class="flex items-center justify-between">
+                      <span class="font-medium">Все вакансии</span>
+                      <span class="text-xs text-gray-500">{{ candidates.length }} кандидатов</span>
+                    </div>
+                  </div>
+
+                  <!-- Individual Vacancies -->
+                  <TransitionGroup
+                    enter-active-class="transition duration-200 ease-out"
+                    enter-from-class="opacity-0 transform translate-y-1"
+                    enter-to-class="opacity-100 transform translate-y-0"
+                    leave-active-class="transition duration-150 ease-in"
+                    leave-from-class="opacity-100 transform translate-y-0"
+                    leave-to-class="opacity-0 transform translate-y-1"
+                  >
                     <div
-                      @click="selectVacancy(vacancy.id)"
-                      class="flex-1 cursor-pointer"
-                      :class="{ 'text-blue-700': selectedVacancyId === vacancy.id }"
+                      v-for="vacancy in filteredVacanciesForSearch"
+                      :key="vacancy.id"
+                      class="px-4 py-3 hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100 last:border-b-0"
+                      :class="{ 'bg-blue-50': selectedVacancyId === vacancy.id }"
                     >
-                      <div class="text-sm font-medium text-gray-900">{{ vacancy.title }}</div>
-                      <div class="text-xs text-gray-500 mt-1">
-                        {{ candidates.filter((c) => c.vacancyId === vacancy.id).length }}
-                        кандидатов
+                      <div class="flex items-center justify-between">
+                        <div
+                          @click="selectVacancy(vacancy.id)"
+                          class="flex-1 cursor-pointer"
+                          :class="{ 'text-blue-700': selectedVacancyId === vacancy.id }"
+                        >
+                          <div class="text-sm font-medium text-gray-900">
+                            <span
+                              v-if="vacancySearchQuery.trim()"
+                              v-html="highlightSearchTerm(vacancy.title, vacancySearchQuery)"
+                            ></span>
+                            <span v-else>{{ vacancy.title }}</span>
+                          </div>
+                          <div class="text-xs text-gray-500 mt-1">
+                            {{ candidates.filter((c) => c.vacancyId === vacancy.id).length }}
+                            кандидатов
+                          </div>
+                        </div>
+                        <div class="flex items-center space-x-2 ml-4">
+                          <button
+                            v-if="vacancy.fileName"
+                            @click.stop="downloadVacancyFile(vacancy)"
+                            class="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-150"
+                            title="Скачать файл"
+                          >
+                            <svg
+                              class="h-4 w-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            @click.stop="deleteVacancy(vacancy.id)"
+                            class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-150"
+                            title="Удалить вакансию"
+                          >
+                            <svg
+                              class="h-4 w-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                     </div>
-                    <div class="flex items-center space-x-2 ml-4">
-                      <button
-                        v-if="vacancy.fileName"
-                        @click.stop="downloadVacancyFile(vacancy)"
-                        class="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-150"
-                        title="Скачать файл"
-                      >
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                          />
-                        </svg>
-                      </button>
-                      <button
-                        @click.stop="deleteVacancy(vacancy.id)"
-                        class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-150"
-                        title="Удалить вакансию"
-                      >
-                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
-                    </div>
+                  </TransitionGroup>
+
+                  <!-- No Results Message -->
+                  <div
+                    v-if="vacancySearchQuery.trim() && filteredVacanciesForSearch.length === 0"
+                    class="px-4 py-8 text-center text-gray-500"
+                  >
+                    <svg
+                      class="mx-auto h-8 w-8 text-gray-300 mb-2"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                      />
+                    </svg>
+                    <p class="text-sm">Вакансии не найдены</p>
+                    <p class="text-xs text-gray-400 mt-1">Попробуйте изменить поисковый запрос</p>
                   </div>
                 </div>
               </div>
@@ -484,7 +654,7 @@ if (typeof window !== 'undefined') {
                 <th
                   class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Вакансия
+                  Анализ резюме
                 </th>
                 <th
                   class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -494,7 +664,7 @@ if (typeof window !== 'undefined') {
                 <th
                   class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Статус
+                  Статус созвона
                 </th>
                 <th
                   class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -512,28 +682,40 @@ if (typeof window !== 'undefined') {
               >
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="text-sm font-medium text-gray-900">{{ candidate.fullName }}</div>
-                  <div v-if="candidate.comments" class="text-xs text-gray-500 mt-1">
-                    {{ candidate.comments }}
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm text-gray-900">
+
+                  <div class="text-xs text-gray-400 mt-1">
                     {{ getVacancyTitle(candidate.vacancyId) }}
                   </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <div v-if="candidate.callDate" class="text-sm text-gray-900">
+                  <span
+                    :class="getResumeAnalysisColor(candidate.resumeAnalysis)"
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset"
+                  >
+                    {{ getResumeAnalysisText(candidate.resumeAnalysis) }}
+                  </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div
+                    v-if="!shouldShowDash(candidate) && candidate.callDate"
+                    class="text-sm text-gray-900"
+                  >
                     {{ formatDateTime(candidate.callDate) }}
                   </div>
-                  <div v-else class="text-sm text-gray-400">Не назначена</div>
+                  <div v-else-if="!shouldShowDash(candidate)" class="text-sm text-gray-400">
+                    Не назначена
+                  </div>
+                  <div v-else class="text-sm text-gray-400">—</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <span
-                    :class="getStatusColor(candidate.status)"
+                    v-if="!shouldShowDash(candidate)"
+                    :class="getCallStatusColor(candidate.callStatus)"
                     class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset"
                   >
-                    {{ getStatusText(candidate.status) }}
+                    {{ getCallStatusText(candidate.callStatus) }}
                   </span>
+                  <span v-else class="text-sm text-gray-400">—</span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <button
@@ -561,10 +743,10 @@ if (typeof window !== 'undefined') {
               <div class="flex items-center justify-between mb-3">
                 <h3 class="text-sm font-medium text-gray-900">{{ candidate.fullName }}</h3>
                 <span
-                  :class="getStatusColor(candidate.status)"
+                  :class="getResumeAnalysisColor(candidate.resumeAnalysis)"
                   class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset"
                 >
-                  {{ getStatusText(candidate.status) }}
+                  {{ getResumeAnalysisText(candidate.resumeAnalysis) }}
                 </span>
               </div>
               <div class="space-y-2 mb-4">
@@ -572,13 +754,26 @@ if (typeof window !== 'undefined') {
                   <span class="font-medium">Вакансия:</span>
                   {{ getVacancyTitle(candidate.vacancyId) }}
                 </p>
-                <p v-if="candidate.callDate" class="text-sm text-gray-600">
+                <p class="text-sm text-gray-600">
                   <span class="font-medium">Созвон:</span>
-                  {{ formatDateTime(candidate.callDate) }}
+                  <span v-if="!shouldShowDash(candidate) && candidate.callDate">
+                    {{ formatDateTime(candidate.callDate) }}
+                  </span>
+                  <span v-else-if="!shouldShowDash(candidate)" class="text-gray-400">
+                    Не назначен
+                  </span>
+                  <span v-else class="text-gray-400">—</span>
                 </p>
-                <p v-if="candidate.comments" class="text-sm text-gray-600">
-                  <span class="font-medium">Комментарий:</span>
-                  {{ candidate.comments }}
+                <p class="text-sm text-gray-600">
+                  <span class="font-medium">Статус созвона:</span>
+                  <span
+                    v-if="!shouldShowDash(candidate)"
+                    :class="getCallStatusColor(candidate.callStatus)"
+                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ring-1 ring-inset ml-2"
+                  >
+                    {{ getCallStatusText(candidate.callStatus) }}
+                  </span>
+                  <span v-else class="text-gray-400 ml-2">—</span>
                 </p>
               </div>
               <div class="flex items-center space-x-3">

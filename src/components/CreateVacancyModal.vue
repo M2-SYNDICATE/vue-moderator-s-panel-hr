@@ -2,7 +2,6 @@
 import { ref, reactive, watch } from 'vue'
 
 interface VacancyForm {
-  title: string
   descriptionFile: File | null
 }
 
@@ -26,10 +25,8 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const form = reactive<VacancyForm>({
-  title: '',
   descriptionFile: null,
 })
-
 const isDragOver = ref(false)
 const fileInputRef = ref<HTMLInputElement>()
 const isVisible = ref(false)
@@ -84,16 +81,15 @@ const removeFile = () => {
 }
 
 const submitForm = () => {
-  if (!form.title) {
-    alert('Пожалуйста, введите название вакансии')
+  if (!form.descriptionFile) {
+    alert('Пожалуйста, прикрепите описание вакансии')
     return
   }
 
   const newVacancy = {
     id: Date.now(),
-    title: form.title,
-    fileName: form.descriptionFile?.name,
     createdAt: new Date().toISOString(),
+    fileName: form.descriptionFile?.name,
   }
 
   emit('vacancy-created', newVacancy)
@@ -102,7 +98,6 @@ const submitForm = () => {
 
 const resetForm = () => {
   Object.assign(form, {
-    title: '',
     descriptionFile: null,
   })
   if (fileInputRef.value) {
@@ -170,21 +165,6 @@ const closeModal = () => {
 
               <!-- Form -->
               <form @submit.prevent="submitForm" class="px-6 pb-6 space-y-5">
-                <!-- Title -->
-                <div class="space-y-2">
-                  <label for="title" class="block text-sm font-medium text-gray-700">
-                    Название вакансии <span class="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="title"
-                    v-model="form.title"
-                    type="text"
-                    placeholder="Senior Java Developer"
-                    required
-                    class="block w-full rounded-xl border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 transition-all duration-200 sm:text-sm sm:leading-6"
-                  />
-                </div>
-
                 <!-- File Upload -->
                 <div class="space-y-2">
                   <label class="block text-sm font-medium text-gray-700">

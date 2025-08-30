@@ -1,11 +1,9 @@
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, computed } from 'vue'
 
 interface CandidateForm {
-  fullName: string
   vacancyId: number | null
   resume: File | null
-  comments: string
 }
 
 interface Vacancy {
@@ -22,7 +20,10 @@ interface Emits {
   (e: 'close'): void
   (
     e: 'candidate-created',
-    candidate: Omit<CandidateForm, 'resume'> & { status: 'suitable' | 'not_suitable' },
+    candidate: Omit<CandidateForm, 'resume'> & {
+      resumeAnalysis: 'suitable' | 'not_suitable' | 'analyzing'
+      callStatus: 'not_planned'
+    },
   ): void
 }
 
@@ -30,15 +31,15 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const form = reactive<CandidateForm>({
-  fullName: '',
   vacancyId: null,
   resume: null,
-  comments: '',
 })
 
 const isDragOver = ref(false)
 const fileInputRef = ref<HTMLInputElement>()
 const isVisible = ref(false)
+const isVacancyDropdownOpen = ref(false)
+const vacancySearchQuery = ref('')
 
 // Watch for modal open/close to handle animations
 watch(
@@ -49,11 +50,54 @@ watch(
     } else {
       setTimeout(() => {
         isVisible.value = false
+        // Сбрасываем состояние dropdown при закрытии модала
+        isVacancyDropdownOpen.value = false
+        vacancySearchQuery.value = ''
       }, 300)
     }
   },
   { immediate: true },
 )
+
+// Фильтрованные вакансии для поиска
+const filteredVacancies = computed(() => {
+  if (!vacancySearchQuery.value.trim()) {
+    return props.vacancies
+  }
+  return props.vacancies.filter((vacancy) =>
+    vacancy.title.toLowerCase().includes(vacancySearchQuery.value.toLowerCase()),
+  )
+})
+
+// Выбранная вакансия для отображения
+const selectedVacancy = computed(() => {
+  return props.vacancies.find((v) => v.id === form.vacancyId)
+})
+
+const selectedVacancyTitle = computed(() => {
+  return selectedVacancy.value?.title || 'Выберите вакансию'
+})
+
+// Функция для подсветки найденного текста
+const highlightSearchTerm = (text: string, searchTerm: string) => {
+  if (!searchTerm.trim()) return text
+
+  const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+  return text.replace(regex, '<mark class="bg-yellow-200 text-yellow-900 px-1 rounded">$1</mark>')
+}
+
+const toggleVacancyDropdown = () => {
+  isVacancyDropdownOpen.value = !isVacancyDropdownOpen.value
+  if (!isVacancyDropdownOpen.value) {
+    vacancySearchQuery.value = ''
+  }
+}
+
+const selectVacancy = (vacancyId: number) => {
+  form.vacancyId = vacancyId
+  isVacancyDropdownOpen.value = false
+  vacancySearchQuery.value = ''
+}
 
 const handleDragOver = (e: DragEvent) => {
   e.preventDefault()
@@ -90,16 +134,15 @@ const removeFile = () => {
 }
 
 const submitForm = () => {
-  if (!form.fullName || !form.vacancyId) {
-    alert('Пожалуйста, заполните обязательные поля')
+  if (!form.vacancyId || !form.resume) {
+    alert('Пожалуйста, выберите вакансию и прикрепите резюме')
     return
   }
 
   const newCandidate = {
-    fullName: form.fullName,
     vacancyId: form.vacancyId,
-    comments: form.comments,
-    status: 'suitable' as const,
+    resumeAnalysis: 'analyzing' as const,
+    callStatus: 'not_planned' as const,
   }
 
   emit('candidate-created', newCandidate)
@@ -108,14 +151,14 @@ const submitForm = () => {
 
 const resetForm = () => {
   Object.assign(form, {
-    fullName: '',
     vacancyId: null,
     resume: null,
-    comments: '',
   })
   if (fileInputRef.value) {
     fileInputRef.value.value = ''
   }
+  isVacancyDropdownOpen.value = false
+  vacancySearchQuery.value = ''
 }
 
 const closeModal = () => {
@@ -178,42 +221,198 @@ const closeModal = () => {
 
               <!-- Form -->
               <form @submit.prevent="submitForm" class="px-6 pb-6 space-y-5">
-                <!-- Full Name -->
-                <div class="space-y-2">
-                  <label for="fullName" class="block text-sm font-medium text-gray-700">
-                    ФИО кандидата <span class="text-red-500">*</span>
-                  </label>
-                  <input
-                    id="fullName"
-                    v-model="form.fullName"
-                    type="text"
-                    placeholder="Иванов Иван Иванович"
-                    required
-                    class="block w-full rounded-xl border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 transition-all duration-200 sm:text-sm sm:leading-6"
-                  />
-                </div>
-
                 <!-- Vacancy Selection -->
                 <div class="space-y-2">
-                  <label for="vacancy" class="block text-sm font-medium text-gray-700">
-                    Вакансия <span class="text-red-500">*</span>
-                  </label>
-                  <select
-                    id="vacancy"
-                    v-model="form.vacancyId"
-                    required
-                    class="block w-full rounded-xl border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-inset focus:ring-blue-600 transition-all duration-200 sm:text-sm sm:leading-6"
-                  >
-                    <option value="">Выберите вакансию</option>
-                    <option v-for="vacancy in vacancies" :key="vacancy.id" :value="vacancy.id">
-                      {{ vacancy.title }}
-                    </option>
-                  </select>
+                  <label class="block text-sm font-medium text-gray-700"> Вакансия </label>
+
+                  <div class="relative" style="z-index: 60">
+                    <button
+                      type="button"
+                      @click="toggleVacancyDropdown"
+                      class="relative w-full bg-white border border-gray-300 rounded-xl shadow-sm pl-4 pr-10 py-3 text-left cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 hover:border-gray-400"
+                      :class="{ 'ring-2 ring-blue-600 border-transparent': isVacancyDropdownOpen }"
+                    >
+                      <span
+                        class="block truncate text-gray-900"
+                        :class="{ 'text-gray-500': !form.vacancyId }"
+                      >
+                        {{ selectedVacancyTitle }}
+                      </span>
+                      <span
+                        class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"
+                      >
+                        <svg
+                          class="h-5 w-5 text-gray-400 transition-transform duration-200"
+                          :class="{ 'rotate-180': isVacancyDropdownOpen }"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </span>
+                    </button>
+
+                    <Transition
+                      enter-active-class="transition duration-200 ease-out"
+                      enter-from-class="transform scale-95 opacity-0"
+                      enter-to-class="transform scale-100 opacity-100"
+                      leave-active-class="transition duration-150 ease-in"
+                      leave-from-class="transform scale-100 opacity-100"
+                      leave-to-class="transform scale-95 opacity-0"
+                    >
+                      <div
+                        v-if="isVacancyDropdownOpen"
+                        class="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 max-h-64 overflow-hidden"
+                      >
+                        <!-- Search Input -->
+                        <div class="p-3 border-b border-gray-100 bg-gray-50/50">
+                          <div class="relative">
+                            <div
+                              class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+                            >
+                              <svg
+                                class="h-4 w-4 text-gray-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                />
+                              </svg>
+                            </div>
+                            <input
+                              v-model="vacancySearchQuery"
+                              type="text"
+                              placeholder="Поиск вакансий..."
+                              class="block w-full pl-10 pr-3 py-2 border border-gray-200 rounded-lg text-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white"
+                              @click.stop
+                            />
+                            <Transition
+                              enter-active-class="transition duration-150 ease-out"
+                              enter-from-class="opacity-0 scale-95"
+                              enter-to-class="opacity-100 scale-100"
+                              leave-active-class="transition duration-100 ease-in"
+                              leave-from-class="opacity-100 scale-100"
+                              leave-to-class="opacity-0 scale-95"
+                            >
+                              <button
+                                v-if="vacancySearchQuery"
+                                type="button"
+                                @click.stop="vacancySearchQuery = ''"
+                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors duration-150"
+                              >
+                                <svg
+                                  class="h-4 w-4"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12"
+                                  />
+                                </svg>
+                              </button>
+                            </Transition>
+                          </div>
+                        </div>
+
+                        <!-- Dropdown Content -->
+                        <div class="max-h-48 overflow-auto">
+                          <!-- Individual Vacancies -->
+                          <TransitionGroup
+                            enter-active-class="transition duration-200 ease-out"
+                            enter-from-class="opacity-0 transform translate-y-1"
+                            enter-to-class="opacity-100 transform translate-y-0"
+                            leave-active-class="transition duration-150 ease-in"
+                            leave-from-class="opacity-100 transform translate-y-0"
+                            leave-to-class="opacity-0 transform translate-y-1"
+                          >
+                            <div
+                              v-for="vacancy in filteredVacancies"
+                              :key="vacancy.id"
+                              @click="selectVacancy(vacancy.id)"
+                              class="px-4 py-3 hover:bg-gray-50 transition-colors duration-150 border-b border-gray-100 last:border-b-0 cursor-pointer"
+                              :class="{ 'bg-blue-50 text-blue-700': form.vacancyId === vacancy.id }"
+                            >
+                              <div class="text-sm font-medium">
+                                <span
+                                  v-if="vacancySearchQuery.trim()"
+                                  v-html="highlightSearchTerm(vacancy.title, vacancySearchQuery)"
+                                ></span>
+                                <span v-else>{{ vacancy.title }}</span>
+                              </div>
+                            </div>
+                          </TransitionGroup>
+
+                          <!-- No Results Message -->
+                          <div
+                            v-if="vacancySearchQuery.trim() && filteredVacancies.length === 0"
+                            class="px-4 py-8 text-center text-gray-500"
+                          >
+                            <svg
+                              class="mx-auto h-8 w-8 text-gray-300 mb-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                              />
+                            </svg>
+                            <p class="text-sm">Вакансии не найдены</p>
+                            <p class="text-xs text-gray-400 mt-1">
+                              Попробуйте изменить поисковый запрос
+                            </p>
+                          </div>
+
+                          <!-- Empty State -->
+                          <div
+                            v-if="!vacancySearchQuery.trim() && filteredVacancies.length === 0"
+                            class="px-4 py-8 text-center text-gray-500"
+                          >
+                            <svg
+                              class="mx-auto h-8 w-8 text-gray-300 mb-2"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                              />
+                            </svg>
+                            <p class="text-sm">Нет доступных вакансий</p>
+                            <p class="text-xs text-gray-400 mt-1">Сначала создайте вакансию</p>
+                          </div>
+                        </div>
+                      </div>
+                    </Transition>
+                  </div>
                 </div>
 
                 <!-- Resume Upload -->
                 <div class="space-y-2">
-                  <label class="block text-sm font-medium text-gray-700">Прикрепить резюме</label>
+                  <label class="block text-sm font-medium text-gray-700"
+                    >Прикрепить резюме (файл)</label
+                  >
 
                   <div
                     @dragover="handleDragOver"
@@ -309,20 +508,6 @@ const closeModal = () => {
                   />
                 </div>
 
-                <!-- Comments -->
-                <div class="space-y-2">
-                  <label for="comments" class="block text-sm font-medium text-gray-700">
-                    Комментарии
-                  </label>
-                  <textarea
-                    id="comments"
-                    v-model="form.comments"
-                    rows="3"
-                    placeholder="Дополнительная информация о кандидате..."
-                    class="block w-full rounded-xl border-0 px-4 py-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-blue-600 transition-all duration-200 sm:text-sm sm:leading-6 resize-none"
-                  ></textarea>
-                </div>
-
                 <!-- Actions -->
                 <div class="flex justify-end space-x-3 pt-4">
                   <button
@@ -334,7 +519,8 @@ const closeModal = () => {
                   </button>
                   <button
                     type="submit"
-                    class="rounded-xl px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 shadow-sm hover:shadow-md transition-all duration-200"
+                    :disabled="!form.vacancyId || !form.resume"
+                    class="rounded-xl px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Добавить кандидата
                   </button>
