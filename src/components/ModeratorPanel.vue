@@ -3,6 +3,14 @@ import { ref, reactive, computed } from 'vue'
 import CreateVacancyModal from './CreateVacancyModal.vue'
 import AddCandidateModal from './AddCandidateModal.vue'
 import { useRouter } from 'vue-router'
+import { onMounted } from 'vue'
+import {
+  getVacancies,
+  getCandidates,
+  deleteVacancy,
+  deleteCandidate,
+  downloadVacancyFile,
+} from '@/services/api.js'
 
 const router = useRouter()
 
@@ -22,6 +30,10 @@ interface Candidate {
   callDate?: string
 }
 
+onMounted(async () => {
+  await Promise.all([loadVacancies(), loadCandidates()])
+})
+
 const searchQuery = ref('')
 const selectedVacancyId = ref<number | null>(null)
 const isVacancyModalOpen = ref(false)
@@ -29,74 +41,38 @@ const isCandidateModalOpen = ref(false)
 const isVacancyDropdownOpen = ref(false)
 const currentPage = ref(1)
 const itemsPerPage = ref(5)
-const isLoading = ref(false)
 const vacancySearchQuery = ref('')
 
 // Vacancies data
-const vacancies = ref<Vacancy[]>([
-  {
-    id: 1,
-    title: 'Senior Java Developer',
-    fileName: 'java_developer_requirements.pdf',
-  },
-  {
-    id: 2,
-    title: 'Frontend React Developer',
-    fileName: 'react_developer_requirements.pdf',
-  },
-  {
-    id: 3,
-    title: 'DevOps Engineer',
-    fileName: 'devops_requirements.pdf',
-  },
-])
+const vacancies = ref<Vacancy[]>([])
+const candidates = ref<Candidate[]>([])
+const isLoading = ref(false)
 
-// Candidates data
-const candidates = ref<Candidate[]>([
-  {
-    id: 1,
-    fullName: 'Иванов Иван Иванович',
-    vacancyId: 1,
-    resumeAnalysis: 'suitable',
-    callStatus: 'completed',
-    comments: 'Отличный опыт работы с Spring Framework',
-    callDate: '2024-01-15T14:00:00Z',
-  },
-  {
-    id: 2,
-    fullName: 'Петрова Анна Сергеевна',
-    vacancyId: 2,
-    resumeAnalysis: 'analyzing',
-    callStatus: 'planned',
-    comments: 'Анализируется опыт с React',
-    callDate: '2024-01-16T10:30:00Z',
-  },
-  {
-    id: 3,
-    fullName: 'Сидоров Петр Александрович',
-    vacancyId: 3,
-    resumeAnalysis: 'suitable',
-    callStatus: 'in_progress',
-    callDate: '2024-01-17T16:00:00Z',
-  },
-  {
-    id: 4,
-    fullName: 'Козлова Мария Викторовна',
-    vacancyId: 1,
-    resumeAnalysis: 'not_suitable',
-    callStatus: 'not_planned',
-    comments: 'Не хватает опыта с микросервисами',
-  },
-  {
-    id: 5,
-    fullName: 'Смирнов Алексей Петрович',
-    vacancyId: 2,
-    resumeAnalysis: 'suitable',
-    callStatus: 'not_planned',
-    comments: 'Хороший кандидат, нужно запланировать созвон',
-  },
-])
+const loadVacancies = async () => {
+  try {
+    isLoading.value = true
+    const response = await getVacancies() //
+    vacancies.value = response.data
+  } catch (err) {
+    console.error('Ошибка загрузки вакансий:', err)
+    alert('Не удалось загрузить вакансии')
+  } finally {
+    isLoading.value = false
+  }
+}
 
+const loadCandidates = async () => {
+  try {
+    isLoading.value = true
+    const response = await getCandidates()
+    candidates.value = response.data
+  } catch (err) {
+    console.error('Ошибка загрузки кандидатов:', err)
+    alert('Не удалось загрузить кандидатов')
+  } finally {
+    isLoading.value = false
+  }
+}
 // Computed properties
 const filteredCandidates = computed(() => {
   let filtered = candidates.value
@@ -261,42 +237,63 @@ const closeCandidateModal = () => {
   isCandidateModalOpen.value = false
 }
 
-const handleVacancyCreated = (vacancy: Omit<Vacancy, 'id'>) => {
-  const newVacancy = {
-    ...vacancy,
-    id: Date.now(),
+const handleVacancyCreated = async () => {
+  try {
+    isLoading.value = true
+    const response = await getVacancies()
+    vacancies.value = response.data
+  } catch (err) {
+    console.error('Не удалось загрузить список вакансий')
+    alert('Не удалось обновить список вакансий')
+  } finally {
+    isLoading.value = false
+    closeVacancyModal()
   }
-  vacancies.value.push(newVacancy)
-  closeVacancyModal()
 }
 
-const handleCandidateCreated = (candidate: Omit<Candidate, 'id'>) => {
-  const newCandidate = {
-    ...candidate,
-    id: Date.now(),
+const handleCandidateCreated = async () => {
+  try {
+    isLoading.value = true
+    const response = await getCandidates()
+    candidates.value = response.data
+  } catch (err) {
+    console.error('Не удалось загрузить список кандидатов')
+    alert('Не удалось обновить список кандидатов')
+  } finally {
+    isLoading.value = false
+    closeCandidateModal()
   }
-  candidates.value.push(newCandidate)
-  closeCandidateModal()
 }
 
-// Actions
-const downloadVacancyFile = (vacancy: Vacancy) => {
-  console.log('Downloading file:', vacancy.fileName)
-  // В реальном приложении здесь будет логика скачивания файла
-}
+const removeVacancy = async (id: number) => {
+  if (!confirm('Вы уверены, что хотите удалить эту вакансию?')) return
 
-const deleteVacancy = (id: number) => {
-  if (confirm('Вы уверены, что хотите удалить эту вакансию?')) {
-    vacancies.value = vacancies.value.filter((v) => v.id !== id)
+  try {
+    isLoading.value = true
+    await deleteVacancy(id)
+    await loadVacancies()
     if (selectedVacancyId.value === id) {
       selectedVacancyId.value = null
     }
+  } catch (err) {
+    console.error('Ошибка при удалении вакансии:', err)
+    alert('Не удалось удалить вакансию')
+  } finally {
+    isLoading.value = false
   }
 }
+const removeCandidate = async (id: number) => {
+  if (!confirm('Вы уверены, что хотите удалить этого кандидата?')) return
 
-const deleteCandidate = (id: number) => {
-  if (confirm('Вы уверены, что хотите удалить этого кандидата?')) {
-    candidates.value = candidates.value.filter((c) => c.id !== id)
+  try {
+    isLoading.value = true
+    await deleteCandidate(id)
+    await loadCandidates()
+  } catch (err) {
+    console.error('Ошибка при удалении кандидата:', err)
+    alert('Не удалось удалить кандидата')
+  } finally {
+    isLoading.value = false
   }
 }
 
@@ -555,7 +552,7 @@ if (typeof window !== 'undefined') {
                         <div class="flex items-center space-x-2 ml-4">
                           <button
                             v-if="vacancy.fileName"
-                            @click.stop="downloadVacancyFile(vacancy)"
+                            @click.stop="downloadVacancyFile(vacancy.id)"
                             class="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-all duration-150"
                             title="Скачать файл"
                           >
@@ -574,7 +571,7 @@ if (typeof window !== 'undefined') {
                             </svg>
                           </button>
                           <button
-                            @click.stop="deleteVacancy(vacancy.id)"
+                            @click.stop="removeVacancy(vacancy.id)"
                             class="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg transition-all duration-150"
                             title="Удалить вакансию"
                           >
@@ -719,7 +716,7 @@ if (typeof window !== 'undefined') {
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <button
-                    @click.stop="deleteCandidate(candidate.id)"
+                    @click.stop="removeCandidate(candidate.id)"
                     :disabled="isLoading"
                     class="text-red-600 cursor-pointer hover:text-red-800 font-medium text-sm transition-colors duration-150 disabled:opacity-50"
                   >
@@ -778,7 +775,7 @@ if (typeof window !== 'undefined') {
               </div>
               <div class="flex items-center space-x-3">
                 <button
-                  @click.stop="deleteCandidate(candidate.id)"
+                  @click.stop="removeCandidate(candidate.id)"
                   :disabled="isLoading"
                   class="text-red-600 cursor-pointer hover:text-red-800 font-medium text-sm transition-colors duration-150 disabled:opacity-50"
                 >

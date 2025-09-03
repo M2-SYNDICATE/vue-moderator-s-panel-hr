@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
-
-interface VacancyForm {
-  descriptionFile: File | null
-}
+import { uploadVacancyFile } from '@/services/api.js'
 
 interface Props {
   isOpen: boolean
@@ -11,21 +8,14 @@ interface Props {
 
 interface Emits {
   (e: 'close'): void
-  (
-    e: 'vacancy-created',
-    vacancy: Omit<VacancyForm, 'descriptionFile'> & {
-      id: number
-      createdAt: string
-      fileName?: string
-    },
-  ): void
+  (e: 'vacancy-created'): void //
 }
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
-const form = reactive<VacancyForm>({
-  descriptionFile: null,
+const form = reactive({
+  descriptionFile: null as File | null,
 })
 const isDragOver = ref(false)
 const fileInputRef = ref<HTMLInputElement>()
@@ -80,20 +70,29 @@ const removeFile = () => {
   }
 }
 
-const submitForm = () => {
+const submitForm = async () => {
   if (!form.descriptionFile) {
-    alert('Пожалуйста, прикрепите описание вакансии')
+    alert('Пожалуйста, прикрепите файл')
     return
   }
 
-  const newVacancy = {
-    id: Date.now(),
-    createdAt: new Date().toISOString(),
-    fileName: form.descriptionFile?.name,
-  }
+  try {
+    // Используем axios через наш сервис
+    await uploadVacancyFile(form.descriptionFile)
 
-  emit('vacancy-created', newVacancy)
-  resetForm()
+    // Успешно загружено → уведомляем родителя
+    emit('vacancy-created')
+    closeModal()
+  } catch (err: any) {
+    console.error('Ошибка при загрузке вакансии:', err)
+
+    // Пытаемся получить текст ошибки из ответа
+    const errorMessage = err.response?.data
+      ? await err.response.data.text().catch(() => 'Ошибка сервера')
+      : err.message || 'Не удалось загрузить вакансию'
+
+    alert(errorMessage)
+  }
 }
 
 const resetForm = () => {

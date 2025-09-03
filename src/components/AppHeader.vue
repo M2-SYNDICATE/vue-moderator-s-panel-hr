@@ -1,13 +1,29 @@
 <script setup lang="ts">
-import router from '@/router'
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { logout as authLogout } from '@/utils/auth' // импортируем наш logout
+
+const router = useRouter()
 
 const user = ref({
-  name: 'Анна Петрова',
-  email: 'anna.petrova@company.com',
+  name: '',
+  email: '',
 })
 
 const isUserMenuOpen = ref(false)
+
+// При монтировании читаем из localStorage
+onMounted(() => {
+  const storedName = localStorage.getItem('userFullName')
+  const storedEmail = localStorage.getItem('userEmail')
+
+  if (storedName && storedEmail) {
+    user.value.name = storedName
+    user.value.email = storedEmail
+  } else {
+    router.push('/login')
+  }
+})
 
 const toggleUserMenu = () => {
   isUserMenuOpen.value = !isUserMenuOpen.value
@@ -17,12 +33,13 @@ const closeUserMenu = () => {
   isUserMenuOpen.value = false
 }
 
+// Обработчик выхода
 const logout = () => {
-  console.log('Logging out...')
-  // Implement logout logic here
+  authLogout()
+  router.push('/login')
 }
 
-// Close menu when clicking outside
+// Закрытие меню при клике вне
 const handleClickOutside = (event: Event) => {
   const target = event.target as HTMLElement
   if (!target.closest('.user-menu-container')) {
@@ -30,10 +47,12 @@ const handleClickOutside = (event: Event) => {
   }
 }
 
-// Add event listener for clicking outside
-if (typeof window !== 'undefined') {
+onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-}
+  window.addEventListener('beforeunload', () => {
+    document.removeEventListener('click', handleClickOutside)
+  })
+})
 </script>
 
 <template>

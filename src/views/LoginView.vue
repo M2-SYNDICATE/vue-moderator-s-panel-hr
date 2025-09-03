@@ -1,29 +1,45 @@
+<!-- src/views/LoginView.vue -->
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { login } from '@/services/api.js'
 
 const router = useRouter()
+
 const isVisible = ref(false)
 const selectedProfile = ref('moderator')
 const email = ref('')
 const password = ref('')
 const isLoading = ref(false)
+const error = ref<string | null>(null)
 
-const login = async () => {
+const loginHandler = async () => {
   if (!email.value || !password.value) {
-    alert('Пожалуйста, заполните все поля')
+    error.value = 'Пожалуйста, заполните все поля'
     return
   }
 
+  error.value = null
   isLoading.value = true
 
-  // Simulate API call
-  await new Promise((resolve) => setTimeout(resolve, 1000))
+  try {
+    const response = await login({
+      email: email.value,
+      password: password.value,
+    })
 
-  // Redirect to moderator panel
-  router.push('/')
+    const { userEmail, fullName } = response.data
 
-  isLoading.value = false
+    localStorage.setItem('userEmail', userEmail)
+    localStorage.setItem('userFullName', fullName)
+
+    router.push('/')
+  } catch (err: any) {
+    console.error('Ошибка входа:', err.response?.data || err.message)
+    error.value = err.response?.data?.message || 'Неверные данные или ошибка сервера'
+  } finally {
+    isLoading.value = false
+  }
 }
 
 onMounted(() => {
@@ -37,7 +53,6 @@ onMounted(() => {
   <div class="min-h-screen bg-gray-50 flex flex-col relative overflow-hidden">
     <!-- Full-screen background image -->
     <div class="absolute inset-0 pointer-events-none">
-      <!-- WebP background image with fallback -->
       <div
         class="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-gray-100 opacity-60"
       ></div>
@@ -45,16 +60,11 @@ onMounted(() => {
         class="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40"
         style="background-image: url('/767.webp')"
       ></div>
-
-      <!-- Subtle overlay for better text readability -->
       <div class="absolute inset-0 bg-white/20 backdrop-blur-[0.5px]"></div>
     </div>
 
-    <!-- Decorative elements -->
-
     <!-- Main content -->
     <div class="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 relative z-10">
-      <!-- Login form -->
       <div class="w-full max-w-md relative">
         <div
           class="transition-all duration-1000 transform"
@@ -72,7 +82,6 @@ onMounted(() => {
 
           <!-- Profile selection -->
           <div class="space-y-4 mb-8">
-            <!-- Moderator profile -->
             <div
               class="relative cursor-pointer transition-all duration-200 hover:scale-[1.02]"
               @click="selectedProfile = 'moderator'"
@@ -109,14 +118,12 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- Employee profile (disabled) -->
             <div class="relative opacity-50">
               <div
                 class="flex items-center p-4 rounded-2xl border-2 border-gray-200 bg-gray-50/80 backdrop-blur-sm"
               >
                 <div class="flex-shrink-0 mr-4">
                   <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                    <!-- Enhanced professional employee icon -->
                     <svg
                       class="w-6 h-6 text-gray-400"
                       fill="none"
@@ -124,15 +131,12 @@ onMounted(() => {
                       viewBox="0 0 24 24"
                       stroke-width="1.5"
                     >
-                      <!-- Head -->
                       <circle cx="12" cy="7" r="3" stroke-linecap="round" stroke-linejoin="round" />
-                      <!-- Shoulders/Body -->
                       <path
                         d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"
                         stroke-linecap="round"
                         stroke-linejoin="round"
                       />
-                      <!-- Briefcase/Professional element -->
                       <rect
                         x="8"
                         y="14"
@@ -143,7 +147,6 @@ onMounted(() => {
                         stroke-linejoin="round"
                         opacity="0.6"
                       />
-                      <!-- Tie accent -->
                       <path d="M12 10v4" stroke-linecap="round" stroke-width="1" />
                     </svg>
                   </div>
@@ -156,8 +159,16 @@ onMounted(() => {
             </div>
           </div>
 
+          <!-- Error message -->
+          <div
+            v-if="error"
+            class="mb-6 p-3 bg-red-50 border border-red-200 text-red-600 rounded-xl text-sm text-center"
+          >
+            {{ error }}
+          </div>
+
           <!-- Login form -->
-          <form @submit.prevent="login" class="space-y-6">
+          <form @submit.prevent="loginHandler" class="space-y-6">
             <!-- Email field -->
             <div>
               <label for="email" class="sr-only">Email</label>
@@ -227,7 +238,6 @@ onMounted(() => {
 </template>
 
 <style scoped>
-/* Custom animations */
 @keyframes bounce {
   0%,
   20%,
@@ -268,14 +278,12 @@ onMounted(() => {
   animation: float 4s ease-in-out infinite;
 }
 
-/* Enhanced backdrop blur support */
 @supports (backdrop-filter: blur(8px)) {
   .backdrop-blur-sm {
     backdrop-filter: blur(8px);
   }
 }
 
-/* Fallback for browsers that don't support backdrop-filter */
 @supports not (backdrop-filter: blur(8px)) {
   .backdrop-blur-sm {
     background-color: rgba(255, 255, 255, 0.9);
