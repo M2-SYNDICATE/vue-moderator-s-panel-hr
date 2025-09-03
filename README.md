@@ -1,34 +1,34 @@
-# vue-hhru
+# vue-moderator-s-panel-hr
 
-This template should help get you started developing with Vue 3 in Vite.
+<p align="center">
+  <img src="public/cover1.png" alt="Обложка 1" width="48%" />
+  <img src="public/cover2.png" alt="Обложка 2" width="48%" />
+</p>
 
-## Recommended IDE Setup
+## Что это ?
 
-[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+**Модераторская панель** (frontend на Vue) для управления HR-контентом: модератор создаёт и редактирует вакансии, добавляет кандидатов, управляет статусами и комментариями.  
+> Важно: **HR-часть у нас на бэке с ИИ** — здесь только интерфейс **модератора**. Все «умные» функции и финальные решения — на стороне бэкенда.
 
-## Type Support for `.vue` Imports in TS
+**Ссылка на бэкенд (пример):** `https://backend.example.com`  
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+---
 
-## Customize configuration
+## Быстрый старт 
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+```bash
+# 1) Клонируйте репозиторий
+git clone https://github.com/your-org/vue-moderator-s-panel-hr.git
+cd vue-moderator-s-panel-hr
 
-## Project Setup
+# 2) Установите зависимости
+npm install   # 
 
-```sh
-npm install
-```
-
-### Compile and Hot-Reload for Development
-
-```sh
+# 3) Запустите dev-сервер
 npm run dev
+
+# 5) Откройте в браузере
+# Обычно: http://localhost:5173/ (Vite)
 ```
 
-### Type-Check, Compile and Minify for Production
 
-```sh
-npm run build
-```
-"# moderator-s-panel-hr" 
