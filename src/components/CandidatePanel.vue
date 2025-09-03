@@ -508,7 +508,7 @@ onMounted(() => {
               <div class="flex items-center space-x-4">
                 <div class="flex-shrink-0">
                   <svg
-                    class="h-10 w-10 text-red-500"
+                    class="h-10 w-10 text-blue-500"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -639,7 +639,7 @@ onMounted(() => {
               <p class="text-xs text-gray-500 mt-2 text-center">
                 {{
                   canPerformActions
-                    ? 'Отчет будет создан автоматически'
+                    ? 'Отчет будет создан автоматически при помощи ИИ'
                     : 'Доступно только для подходящих резюме'
                 }}
               </p>
@@ -653,20 +653,6 @@ onMounted(() => {
               <h3 class="text-lg font-semibold text-gray-900 mb-4">Быстрые действия</h3>
 
               <div class="space-y-3">
-                <button
-                  class="w-full inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-50 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200"
-                >
-                  <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                  Редактировать
-                </button>
-
                 <button
                   class="w-full inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200"
                 >
