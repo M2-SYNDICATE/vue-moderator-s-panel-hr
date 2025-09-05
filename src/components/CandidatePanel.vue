@@ -1,36 +1,39 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { getCandidateById, sendScheduleInvite } from '@/services/api'
 
+// Получаем ID кандидата из URL
 const route = useRoute()
+const candidateId = Number(route.params.id)
 
-// Mock data - в реальном приложении будет загружаться по ID
-const candidate = ref({
-  id: 1,
-  title: 'Иванов Иван / Java Developer',
-  vacancy: 'Senior Java Developer',
-  callDate: '2024-01-15T14:00:00Z',
-  callLink: 'https://meet.google.com/abc-defg-hij',
-  comments:
-    'Кандидат имеет отличный опыт работы с Spring Framework и микросервисами. Показал хорошие знания в области архитектуры приложений. Рекомендуется к собеседованию.',
-  resume: {
-    name: 'Иванов_Иван_Java_Developer.pdf',
-    size: 245760, // bytes
-    uploadDate: '2024-01-14',
-  },
-  resumeAnalysis: 'suitable' as 'suitable' | 'not_suitable' | 'analyzing', // Анализ резюме
-  callStatus: 'completed' as 'not_planned' | 'planned' | 'in_progress' | 'completed', // Статус созвона
-  createdAt: '2024-01-14T10:30:00Z',
+// Состояния
+const candidate = ref<any>(null)
+const loading = ref(true)
+const error = ref<string | null>(null)
+const isSendingInvitation = ref(false)
+const editEmail = ref('')
+const isEditingEmail = ref(false)
+
+// Загружаем кандидата по ID
+onMounted(async () => {
+  try {
+    const response = await getCandidateById(candidateId)
+    candidate.value = response.data
+  } catch (err) {
+    error.value = 'Ошибка при загрузке данных кандидата'
+    console.error(err)
+  } finally {
+    loading.value = false
+  }
 })
 
-// Состояния для редактирования
-const isEditingCallLink = ref(false)
-const isEditingCallDate = ref(false)
-const editCallLink = ref('')
-const editCallDate = ref('')
+// Если нет данных — показываем сообщение
+const hasData = computed(() => candidate.value !== null)
 
-// Extract candidate info from title
+// Распарсить информацию из заголовка
 const candidateInfo = computed(() => {
+  if (!candidate.value?.title) return { fullName: 'Не указано', position: '' }
   const parts = candidate.value.title.split(' / ')
   return {
     fullName: parts[0] || 'Не указано',
@@ -38,19 +41,30 @@ const candidateInfo = computed(() => {
   }
 })
 
-// Проверка, можно ли выполнять действия (если резюме подходит)
-const canPerformActions = computed(() => {
-  return candidate.value.resumeAnalysis === 'suitable'
+const canDownloadResume = computed(() => {
+  return candidate.value?.resumeAnalysis === 'suitable'
 })
 
-const formatFileSize = (bytes: number) => {
-  if (bytes === 0) return '0 Bytes'
-  const k = 1024
-  const sizes = ['Bytes', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-}
+const isReportPending = computed(() => {
+  return candidate.value?.resumeAnalysis === 'suitable' && !candidate.value?.ai_report
+})
 
+// Проверка, можно ли выполнять действия
+const canPerformActions = computed(() => {
+  return candidate.value?.resumeAnalysis === 'suitable'
+})
+
+// Показывать управление созвоном только если приглашение отправлено
+const showCallManagement = computed(() => {
+  return canPerformActions.value && !!candidate.value?.email
+})
+
+// Показывать форму отправки приглашения
+const showInvitationForm = computed(() => {
+  return canPerformActions.value && !candidate.value?.invitationSent
+})
+
+// Форматирование даты и времени
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('ru-RU', {
     year: 'numeric',
@@ -69,7 +83,15 @@ const formatDateTime = (dateString: string) => {
   })
 }
 
-// Функции для анализа резюме
+const formatFileSize = (bytes: number) => {
+  if (bytes === 0) return '0 Bytes'
+  const k = 1024
+  const sizes = ['Bytes', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+// Анализ резюме
 const getResumeAnalysisText = (analysis: string) => {
   switch (analysis) {
     case 'suitable':
@@ -96,7 +118,7 @@ const getResumeAnalysisColor = (analysis: string) => {
   }
 }
 
-// Функции для статуса созвона
+// Статус созвона
 const getCallStatusText = (status: string) => {
   switch (status) {
     case 'not_planned':
@@ -127,14 +149,21 @@ const getCallStatusColor = (status: string) => {
   }
 }
 
-// Функции для редактирования ссылки на созвон
+// Редактирование ссылки на созвон
+const isEditingCallLink = ref(false)
+const editCallLink = ref('')
+
 const startEditingCallLink = () => {
-  editCallLink.value = candidate.value.callLink || ''
+  editCallLink.value = candidate.value?.callLink || ''
   isEditingCallLink.value = true
 }
 
 const saveCallLink = () => {
-  candidate.value.callLink = editCallLink.value
+  if (editCallLink.value.trim()) {
+    candidate.value.callLink = editCallLink.value
+  } else {
+    candidate.value.callLink = null
+  }
   isEditingCallLink.value = false
 }
 
@@ -143,10 +172,12 @@ const cancelEditingCallLink = () => {
   isEditingCallLink.value = false
 }
 
-// Функции для редактирования даты созвона
+// Редактирование даты созвона
+const isEditingCallDate = ref(false)
+const editCallDate = ref('')
+
 const startEditingCallDate = () => {
-  if (candidate.value.callDate) {
-    // Конвертируем в формат datetime-local
+  if (candidate.value?.callDate) {
     const date = new Date(candidate.value.callDate)
     editCallDate.value = date.toISOString().slice(0, 16)
   } else {
@@ -158,12 +189,11 @@ const startEditingCallDate = () => {
 const saveCallDate = () => {
   if (editCallDate.value) {
     candidate.value.callDate = new Date(editCallDate.value).toISOString()
-    // Если дата установлена и статус был "не запланирован", меняем на "запланирован"
     if (candidate.value.callStatus === 'not_planned') {
       candidate.value.callStatus = 'planned'
     }
   } else {
-    candidate.value.callDate = undefined
+    candidate.value.callDate = null
     candidate.value.callStatus = 'not_planned'
   }
   isEditingCallDate.value = false
@@ -174,14 +204,72 @@ const cancelEditingCallDate = () => {
   isEditingCallDate.value = false
 }
 
+// Открытие ссылки на созвон
+const openCallLink = () => {
+  if (!canPerformActions.value) return
+  if (candidate.value?.callLink) {
+    window.open(candidate.value.callLink, '_blank')
+  }
+}
+
+// Скачивание резюме
 const downloadResume = () => {
   if (!canPerformActions.value) {
     alert('Действие недоступно: резюме не подходит для данной вакансии')
     return
   }
+  // Здесь можно вызвать функцию из api.js для скачивания файла
+  // Например: downloadResumeFile(candidate.value.resume.id)
   console.log('Downloading resume:', candidate.value.resume.name)
 }
 
+const sendInvitation = async () => {
+  if (!editEmail.value.trim()) {
+    alert('Введите email кандидата')
+    return
+  }
+
+  // Валидация email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(editEmail.value)) {
+    alert('Введите корректный email адрес')
+    return
+  }
+
+  isSendingInvitation.value = true
+
+  try {
+    // Отправляем приглашение
+    const response = await sendScheduleInvite(candidateId, editEmail.value)
+
+    // Обновляем данные кандидата
+    candidate.value.email = editEmail.value
+    candidate.value.invitationSent = true
+
+    // Опционально: если есть `callDate`, можно установить статус
+    if (candidate.value.callStatus === 'not_planned') {
+      candidate.value.callStatus = 'planned'
+    }
+
+    // Скрываем форму редактирования
+    isEditingEmail.value = false
+    editEmail.value = ''
+
+    console.log('Приглашение отправлено:', response)
+  } catch (error) {
+    console.error('Ошибка при отправке приглашения:', error)
+    alert('Не удалось отправить приглашение. Попробуйте еще раз.')
+  } finally {
+    isSendingInvitation.value = false
+  }
+}
+
+const startEditingEmail = () => {
+  editEmail.value = candidate.value?.email || ''
+  isEditingEmail.value = true
+}
+
+// Скачивание PDF отчета
 const downloadPDF = () => {
   if (!canPerformActions.value) {
     alert('Действие недоступно: резюме не подходит для данной вакансии')
@@ -189,24 +277,6 @@ const downloadPDF = () => {
   }
   console.log('Downloading PDF report for candidate:', candidate.value.id)
 }
-
-const openCallLink = () => {
-  if (!canPerformActions.value) {
-    alert('Действие недоступно: резюме не п��дходит для данной вакансии')
-    return
-  }
-  if (candidate.value.callLink) {
-    window.open(candidate.value.callLink, '_blank')
-  }
-}
-
-const isVisible = ref(false)
-
-onMounted(() => {
-  setTimeout(() => {
-    isVisible.value = true
-  }, 100)
-})
 </script>
 
 <template>
@@ -226,25 +296,42 @@ onMounted(() => {
         <span class="text-gray-900 font-medium">{{ candidateInfo.fullName }}</span>
       </nav>
 
-      <!-- Main content grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- Loading state -->
+      <div v-if="loading" class="flex justify-center items-center h-64">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+
+      <!-- Error state -->
+      <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <svg
+          class="mx-auto h-12 w-12 text-red-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+          />
+        </svg>
+        <h3 class="mt-2 text-sm font-medium text-red-800">Ошибка загрузки</h3>
+        <p class="mt-1 text-sm text-red-700">{{ error }}</p>
+      </div>
+
+      <!-- Main content -->
+      <div v-else-if="hasData" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Main content -->
         <div class="lg:col-span-2 space-y-8">
           <!-- Header card -->
-          <div
-            class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up"
-            :class="{
-              'opacity-100 translate-y-0': isVisible,
-              'opacity-0 translate-y-4': !isVisible,
-            }"
-          >
+          <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up">
             <div class="flex items-start justify-between mb-4">
               <div>
                 <h1 class="text-2xl font-bold text-gray-900 mb-2">{{ candidate.title }}</h1>
                 <p class="text-gray-600">{{ candidate.vacancy }}</p>
               </div>
             </div>
-
             <div class="flex items-center space-x-6 text-sm text-gray-500">
               <div class="flex items-center">
                 <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -269,23 +356,118 @@ onMounted(() => {
                 <span v-if="candidate.callDate && canPerformActions">
                   Созвон {{ formatDateTime(candidate.callDate) }}
                 </span>
-                <span v-else-if="canPerformActions" class="text-gray-400">
-                  Созвон не назначен
-                </span>
+                <span v-else-if="canPerformActions" class="text-gray-400">Созвон не назначен</span>
                 <span v-else class="text-gray-400">—</span>
               </div>
             </div>
           </div>
 
-          <!-- Call date management card -->
+          <!-- Invitation form -->
           <div
-            v-if="canPerformActions"
+            v-if="showInvitationForm"
             class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up"
-            style="animation-delay: 0.1s"
           >
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Управление созвоном</h2>
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">
+              Отправить приглашение кандидату
+            </h2>
+            <p class="text-sm text-gray-600 mb-4">
+              Отправьте кандидату приглашение на собеседование, чтобы узнать удобное время для
+              созвона.
+            </p>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Email кандидата</label>
+                <div v-if="!isEditingEmail" class="flex items-center justify-between">
+                  <div class="flex-1">
+                    <div v-if="candidate.email" class="p-3 bg-gray-50 rounded-lg">
+                      <div class="flex items-center space-x-3">
+                        <svg
+                          class="h-5 w-5 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+                          />
+                        </svg>
+                        <span class="text-sm text-gray-900">{{ candidate.email }}</span>
+                      </div>
+                    </div>
+                    <div v-else class="p-3 bg-gray-50 rounded-lg">
+                      <div class="flex items-center space-x-3">
+                        <svg
+                          class="h-5 w-5 text-gray-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+                          />
+                        </svg>
+                        <span class="text-sm text-gray-500">Email не указан</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    @click="startEditingEmail"
+                    class="ml-4 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors duration-150"
+                  >
+                    {{ candidate.email ? 'Изменить' : 'Добавить' }}
+                  </button>
+                </div>
+                <div v-else class="space-y-3">
+                  <input
+                    v-model="editEmail"
+                    type="email"
+                    placeholder="candidate@example.com"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <div class="flex space-x-2">
+                    <button
+                      @click="sendInvitation"
+                      :disabled="isSendingInvitation || !editEmail.trim()"
+                      class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {{ isSendingInvitation ? 'Отправка...' : 'Отправить приглашение' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-            <!-- Call Date Section -->
+          <!-- Call management -->
+          <div
+            v-if="showCallManagement"
+            class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up"
+          >
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-lg font-semibold text-gray-900">Управление созвоном</h2>
+              <div
+                v-if="candidate.invitationSent && !candidate.callDate"
+                class="flex items-center space-x-2 text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full"
+              >
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+                <span>Приглашение отправлено</span>
+              </div>
+            </div>
+
+            <!-- Call Date -->
             <div class="mb-6">
               <div class="flex items-center justify-between mb-3">
                 <h3 class="text-sm font-medium text-gray-700">Дата и время созвона</h3>
@@ -293,11 +475,8 @@ onMounted(() => {
                   v-if="!isEditingCallDate"
                   @click="startEditingCallDate"
                   class="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors duration-150"
-                >
-                  {{ candidate.callDate ? 'Изменить' : 'Добавить' }}
-                </button>
+                ></button>
               </div>
-
               <div v-if="!isEditingCallDate" class="p-4 bg-gray-50 rounded-xl">
                 <div v-if="candidate.callDate" class="flex items-center space-x-3">
                   <svg
@@ -334,7 +513,6 @@ onMounted(() => {
                   <span class="text-sm text-gray-500">Дата созвона не назначена</span>
                 </div>
               </div>
-
               <div v-else class="space-y-3">
                 <input
                   v-model="editCallDate"
@@ -358,7 +536,7 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- Call Link Section -->
+            <!-- Call Link -->
             <div>
               <div class="flex items-center justify-between mb-3">
                 <h3 class="text-sm font-medium text-gray-700">Ссылка на созвон</h3>
@@ -366,11 +544,8 @@ onMounted(() => {
                   v-if="!isEditingCallLink"
                   @click="startEditingCallLink"
                   class="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors duration-150"
-                >
-                  {{ candidate.callLink ? 'Изменить' : 'Добавить' }}
-                </button>
+                ></button>
               </div>
-
               <div v-if="!isEditingCallLink" class="p-4 bg-gray-50 rounded-xl">
                 <div v-if="candidate.callLink" class="flex items-center justify-between">
                   <div class="flex items-center space-x-3 min-w-0 flex-1">
@@ -426,7 +601,6 @@ onMounted(() => {
                   <span class="text-sm text-gray-500">Ссылка на созвон не добавлена</span>
                 </div>
               </div>
-
               <div v-else class="space-y-3">
                 <input
                   v-model="editCallLink"
@@ -452,41 +626,10 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- Blocked actions message -->
-          <div
-            v-if="!canPerformActions"
-            class="bg-red-50 border border-red-200 rounded-2xl p-6 animate-slide-up"
-            style="animation-delay: 0.1s"
-          >
-            <div class="flex items-center space-x-3">
-              <svg
-                class="h-6 w-6 text-red-500 flex-shrink-0"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                />
-              </svg>
-              <div>
-                <h3 class="text-sm font-medium text-red-800">Резюме не подходит</h3>
-                <p class="text-sm text-red-700 mt-1">
-                  Управление созвоном и получение отчетов недоступно для кандидатов с неподходящими
-                  резюме.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Comments card -->
+          <!-- Comments -->
           <div
             v-if="candidate.comments"
             class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up"
-            style="animation-delay: 0.2s"
           >
             <h2 class="text-lg font-semibold text-gray-900 mb-4">Комментарии и заметки AI</h2>
             <div class="prose prose-gray max-w-none">
@@ -494,21 +637,18 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- Resume card -->
+          <!-- Resume -->
           <div
             v-if="candidate.resume"
             class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up"
-            style="animation-delay: 0.3s"
           >
             <h2 class="text-lg font-semibold text-gray-900 mb-4">Прикрепленное резюме</h2>
-            <div
-              class="flex items-center justify-between p-4 bg-gray-50 rounded-xl transition-colors duration-200"
-              :class="{ 'hover:bg-gray-100': canPerformActions, 'opacity-60': !canPerformActions }"
-            >
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
               <div class="flex items-center space-x-4">
                 <div class="flex-shrink-0">
                   <svg
-                    class="h-10 w-10 text-blue-500"
+                    :class="canPerformActions ? 'text-blue-500' : 'text-orange-500'"
+                    class="h-10 w-10"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -531,15 +671,21 @@ onMounted(() => {
               </div>
               <button
                 @click="downloadResume"
-                :disabled="!canPerformActions"
-                class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 ring-1"
+                :disabled="!canDownloadResume"
+                class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 ring-1"
                 :class="
                   canPerformActions
                     ? 'text-gray-700 bg-white hover:bg-gray-50 ring-gray-300'
-                    : 'text-gray-400 bg-gray-100 cursor-not-allowed ring-gray-200'
+                    : 'text-orange-700 bg-orange-50 hover:bg-orange-100 ring-orange-200 border border-orange-300'
                 "
               >
-                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  :class="canPerformActions ? 'text-gray-500' : 'text-orange-500'"
+                  class="h-4 w-4 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -550,35 +696,45 @@ onMounted(() => {
                 Скачать
               </button>
             </div>
+
+            <!-- Предупреждение, если резюме не подходит -->
+            <div
+              v-if="candidate.resumeAnalysis === 'not_suitable'"
+              class="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg"
+            >
+              <div class="flex items-center space-x-2 text-xs text-orange-800">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+                <span>Резюме не подходит для данной вакансии, но доступно для ознакомления</span>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- Sidebar -->
         <div class="lg:col-span-1">
           <div class="sticky top-24 space-y-6">
-            <!-- Candidate info card -->
-            <div
-              class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up"
-              style="animation-delay: 0.4s"
-            >
+            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up">
               <h3 class="text-lg font-semibold text-gray-900 mb-4">Информация о кандидате</h3>
-
               <div class="space-y-4">
                 <div>
                   <dt class="text-sm font-medium text-gray-500 mb-1">ФИО</dt>
                   <dd class="text-sm text-gray-900 font-medium">{{ candidateInfo.fullName }}</dd>
                 </div>
-
                 <div>
                   <dt class="text-sm font-medium text-gray-500 mb-1">Позиция</dt>
                   <dd class="text-sm text-gray-900">{{ candidateInfo.position }}</dd>
                 </div>
-
                 <div>
                   <dt class="text-sm font-medium text-gray-500 mb-1">Вакансия</dt>
                   <dd class="text-sm text-gray-900">{{ candidate.vacancy }}</dd>
                 </div>
-
                 <div>
                   <dt class="text-sm font-medium text-gray-500 mb-1">Анализ резюме</dt>
                   <dd>
@@ -590,7 +746,6 @@ onMounted(() => {
                     </span>
                   </dd>
                 </div>
-
                 <div>
                   <dt class="text-sm font-medium text-gray-500 mb-1">Статус созвона</dt>
                   <dd>
@@ -605,22 +760,19 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- PDF download card -->
-            <div
-              class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up"
-              style="animation-delay: 0.5s"
-            >
+            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up">
               <h3 class="text-lg font-semibold text-gray-900 mb-4">Отчет</h3>
               <p class="text-sm text-gray-600 mb-4">
                 Скачайте полный отчет по кандидату в формате PDF
               </p>
 
+              <!-- Кнопка скачивания -->
               <button
                 @click="downloadPDF"
-                :disabled="!canPerformActions"
+                :disabled="!canPerformActions || isReportPending"
                 class="w-full inline-flex items-center justify-center px-4 py-3 text-sm font-medium rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 shadow-sm"
                 :class="
-                  canPerformActions
+                  canPerformActions && !isReportPending
                     ? 'text-white bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 hover:shadow-md'
                     : 'text-gray-400 bg-gray-200 cursor-not-allowed focus:ring-gray-300'
                 "
@@ -633,25 +785,31 @@ onMounted(() => {
                     d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                   />
                 </svg>
-                {{ canPerformActions ? 'Скачать PDF отчет' : 'Отчет недоступен' }}
+                {{
+                  canPerformActions && !isReportPending ? 'Скачать PDF отчет' : 'Отчет недоступен'
+                }}
               </button>
 
+              <!-- Сообщение: отчёт ещё не сформирован -->
+              <p
+                v-if="isReportPending"
+                class="text-xs text-yellow-700 mt-2 text-center bg-yellow-50 py-2 px-4 rounded-lg"
+              >
+                ⏳ Отчёт ещё не сформирован
+              </p>
+
+              <!-- Стандартное пояснение -->
               <p class="text-xs text-gray-500 mt-2 text-center">
                 {{
-                  canPerformActions
-                    ? 'Отчет будет создан автоматически при помощи ИИ'
-                    : 'Доступно только для подходящих резюме'
+                  !canPerformActions
+                    ? 'Доступно только для подходящих резюме'
+                    : 'Отчет будет создан автоматически при помощи AI'
                 }}
               </p>
             </div>
 
-            <!-- Quick actions -->
-            <div
-              class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up"
-              style="animation-delay: 0.6s"
-            >
+            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up">
               <h3 class="text-lg font-semibold text-gray-900 mb-4">Быстрые действия</h3>
-
               <div class="space-y-3">
                 <button
                   class="w-full inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200"

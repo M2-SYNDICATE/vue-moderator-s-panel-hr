@@ -130,6 +130,10 @@ const handleDrop = (e: DragEvent) => {
 const handleFileSelect = (e: Event) => {
   const target = e.target as HTMLInputElement
   addFiles(target.files)
+  // Сбрасываем значение, чтобы можно было выбрать те же файлы снова
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
 }
 
 // === Удаление файла ===
@@ -159,10 +163,8 @@ const submitForm = async () => {
   isUploading.value = true
 
   try {
-    // Отправляем все файлы одним запросом
     await addCandidate(form.vacancyId, form.files)
 
-    // === ОДИН раз уведомляем родителя ===
     emit('candidate-created')
 
     closeModal()
@@ -397,25 +399,30 @@ watch(
                   </div>
                 </div>
 
-                <!-- Resume Upload (Multiple) -->
-                <div class="space-y-2">
+                <!-- Resume Upload -->
+                <div class="space-y-3">
                   <label class="block text-sm font-medium text-gray-700">
                     Прикрепить резюме (можно несколько)
                   </label>
 
+                  <!-- Drag & Drop Zone -->
                   <div
                     @dragover="handleDragOver"
                     @dragleave="handleDragLeave"
                     @drop="handleDrop"
                     :class="[
-                      'relative rounded-xl border-2 border-dashed p-6 text-center transition-all duration-200',
+                      'relative rounded-xl border-2 border-dashed transition-all duration-200',
+                      form.files.length > 0 ? 'p-4' : 'p-6',
                       isDragOver
                         ? 'border-blue-400 bg-blue-50'
                         : 'border-gray-300 hover:border-gray-400',
                     ]"
                   >
-                    <div v-if="form.files.length === 0" class="space-y-3">
-                      <div class="mx-auto h-12 w-12 text-gray-400">
+                    <div class="text-center">
+                      <div
+                        :class="form.files.length > 0 ? 'h-8 w-8' : 'h-12 w-12'"
+                        class="mx-auto text-gray-400"
+                      >
                         <svg
                           fill="none"
                           stroke="currentColor"
@@ -430,71 +437,74 @@ watch(
                           />
                         </svg>
                       </div>
-                      <div class="space-y-1">
-                        <p class="text-sm text-gray-600">
-                          Перетащите файлы сюда или
+                      <div :class="form.files.length > 0 ? 'space-y-1' : 'space-y-1 mt-3'">
+                        <p
+                          :class="form.files.length > 0 ? 'text-xs' : 'text-sm'"
+                          class="text-gray-600"
+                        >
+                          {{
+                            form.files.length > 0
+                              ? 'Добавить еще файлы'
+                              : 'Перетащите файлы сюда или'
+                          }}
                           <button
                             type="button"
                             @click="fileInputRef?.click()"
                             class="font-medium text-blue-600 hover:text-blue-500"
                           >
-                            выберите
+                            {{ form.files.length > 0 ? '' : 'выберите' }}
                           </button>
                         </p>
                         <p class="text-xs text-gray-500">PDF, DOC, DOCX до 10 МБ каждый</p>
                       </div>
                     </div>
+                  </div>
 
-                    <!-- Список файлов -->
-                    <div v-else class="space-y-2">
-                      <div
-                        v-for="(file, index) in form.files"
-                        :key="index"
-                        class="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
-                      >
-                        <div class="flex items-center space-x-3">
-                          <svg
-                            class="h-6 w-6 text-gray-400"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="1.5"
-                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                            />
-                          </svg>
-                          <div class="min-w-0 flex-1">
-                            <p class="text-sm font-medium text-gray-900 truncate">
-                              {{ file.name }}
-                            </p>
-                            <p class="text-xs text-gray-500">
-                              {{ Math.round(file.size / 1024) }} КБ
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          @click="removeFile(index)"
-                          class="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 rounded-full transition"
+                  <!-- Список файлов -->
+                  <div v-if="form.files.length > 0" class="space-y-2 max-h-40 overflow-y-auto">
+                    <div class="text-xs font-medium text-gray-500 px-1">
+                      Выбрано файлов: {{ form.files.length }}
+                    </div>
+                    <div
+                      v-for="(file, index) in form.files"
+                      :key="index"
+                      class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
+                    >
+                      <div class="flex items-center space-x-3 min-w-0 flex-1">
+                        <svg
+                          class="h-5 w-5 text-gray-400 flex-shrink-0"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
                         >
-                          <svg
-                            class="h-4 w-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        </button>
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="1.5"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                          />
+                        </svg>
+                        <div class="min-w-0 flex-1">
+                          <p class="text-sm font-medium text-gray-900 truncate">
+                            {{ file.name }}
+                          </p>
+                          <p class="text-xs text-gray-500">{{ Math.round(file.size / 1024) }} КБ</p>
+                        </div>
                       </div>
+                      <button
+                        type="button"
+                        @click="removeFile(index)"
+                        class="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-full transition flex-shrink-0 ml-2"
+                      >
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
                     </div>
                   </div>
 
@@ -522,7 +532,11 @@ watch(
                     :disabled="!canSubmit"
                     class="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-sm hover:shadow transition disabled:opacity-70 disabled:cursor-not-allowed"
                   >
-                    {{ isUploading ? 'Загрузка...' : `Добавить ${form.files.length} кандидатов` }}
+                    {{
+                      isUploading
+                        ? 'Загрузка...'
+                        : `Добавить ${form.files.length} кандидат${form.files.length === 1 ? 'а' : form.files.length < 5 ? 'ов' : 'ов'}`
+                    }}
                   </button>
                 </div>
               </form>

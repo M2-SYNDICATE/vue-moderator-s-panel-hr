@@ -2,7 +2,7 @@
 import axios from 'axios'
 
 // Базовый URL вашего бэкенда
-const API_BASE_URL = 'http://26.119.64.68:8000/crud' // замени на реальный адрес
+const API_BASE_URL = 'http://192.168.0.13:8000/crud' // замени на реальный адрес
 
 // Создаём экземпляр axios
 const api = axios.create({
@@ -188,6 +188,24 @@ function getFilenameFromContentDisposition(contentDisposition) {
   return null
 }
 
+export const sendScheduleInvite = async (candidateId, email) => {
+  try {
+    const response = await api.post('/schedule/invite', {
+      candidate_id: candidateId,
+      email: email,
+    })
+    return response.data
+  } catch (error) {
+    if (error.response && error.response.data) {
+      try {
+        const text = await error.response.data.text()
+        error.response.data = text
+      } catch {}
+    }
+    throw error
+  }
+}
+
 // Экспорт всех методов
 export default {
   login,
@@ -198,4 +216,5 @@ export default {
   uploadVacancyFile,
   addCandidate,
   deleteVacancy,
+  sendScheduleInvite,
 }
