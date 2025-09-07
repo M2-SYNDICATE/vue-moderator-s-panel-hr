@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import CreateVacancyModal from './CreateVacancyModal.vue'
 import AddCandidateModal from './AddCandidateModal.vue'
 import { useRouter } from 'vue-router'
-import { onMounted } from 'vue'
 import {
   getVacancies,
   getCandidates,
   deleteVacancy,
   deleteCandidate,
   downloadVacancyFile,
-} from '@/services/api.js'
+  type Candidate, // ← добавьте это
+} from '@/services/api'
 
 const router = useRouter()
 
@@ -20,20 +20,33 @@ interface Vacancy {
   fileName?: string
 }
 
-interface Candidate {
-  id: number
-  fullName: string
-  vacancyId: number
-  resumeAnalysis: 'suitable' | 'not_suitable' | 'analyzing' // Анализ резюме
-  callStatus: 'not_planned' | 'planned' | 'in_progress' | 'completed' // Статус созвона
-  comments?: string
-  callDate?: string
+// Интервал для автообновления
+let updateInterval: ReturnType<typeof setInterval> | null = null
+
+// Функция для сравнения объектов
+const isEqual = (obj1: any, obj2: any): boolean => {
+  return JSON.stringify(obj1) === JSON.stringify(obj2)
 }
 
 onMounted(async () => {
   await Promise.all([loadVacancies(), loadCandidates()])
+
+  // Запускаем автообновление каждые 30 секунд
+  updateInterval = setInterval(() => {
+    loadVacancies(false) // Без показа лоадера для фоновых обновлений
+    loadCandidates(false)
+  }, 30000) // 30 секунд
 })
 
+// Очищаем интервал при размонтировании
+onUnmounted(() => {
+  if (updateInterval) {
+    clearInterval(updateInterval)
+    updateInterval = null
+  }
+})
+
+const copiedLinks = ref<Set<number>>(new Set())
 const searchQuery = ref('')
 const selectedVacancyId = ref<number | null>(null)
 const isVacancyModalOpen = ref(false)
@@ -48,29 +61,39 @@ const vacancies = ref<Vacancy[]>([])
 const candidates = ref<Candidate[]>([])
 const isLoading = ref(false)
 
-const loadVacancies = async () => {
+const loadVacancies = async (showLoading = true) => {
   try {
-    isLoading.value = true
-    const response = await getVacancies() //
-    vacancies.value = response.data
+    if (showLoading) isLoading.value = true
+    const response = await getVacancies()
+
+    // Сравниваем с текущ��ми данными
+    if (!isEqual(vacancies.value, response.data)) {
+      vacancies.value = response.data
+      console.log('Данные вакансий обновлены')
+    }
   } catch (err) {
     console.error('Ошибка загрузки вакансий:', err)
-    alert('Не удалось загрузить вакансии')
+    if (showLoading) alert('Не удалось загрузить вакансии')
   } finally {
-    isLoading.value = false
+    if (showLoading) isLoading.value = false
   }
 }
 
-const loadCandidates = async () => {
+const loadCandidates = async (showLoading = true) => {
   try {
-    isLoading.value = true
+    if (showLoading) isLoading.value = true
     const response = await getCandidates()
-    candidates.value = response.data
+
+    // Сравниваем с текущими данными
+    if (!isEqual(candidates.value, response.data)) {
+      candidates.value = response.data
+      console.log('Данные кандидатов обновлены')
+    }
   } catch (err) {
     console.error('Ошибка загрузки кандидатов:', err)
-    alert('Не удалось загрузить кандидатов')
+    if (showLoading) alert('Не удалось загрузить кандидатов')
   } finally {
-    isLoading.value = false
+    if (showLoading) isLoading.value = false
   }
 }
 // Computed properties
@@ -305,6 +328,32 @@ const openCandidate = (id: number) => {
 // Pagination
 const goToPage = (page: number) => {
   currentPage.value = page
+}
+
+const copyCallLink = async (candidate: Candidate) => {
+  if (!candidate.callLink) return
+
+  try {
+    await navigator.clipboard.writeText(candidate.callLink)
+    copiedLinks.value.add(candidate.id)
+
+    setTimeout(() => {
+      copiedLinks.value.delete(candidate.id)
+    }, 2000)
+  } catch (err) {
+    console.error('Не удалось скопировать ссылку:', err)
+    const textArea = document.createElement('textarea')
+    textArea.value = candidate.callLink
+    document.body.appendChild(textArea)
+    textArea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textArea)
+
+    copiedLinks.value.add(candidate.id)
+    setTimeout(() => {
+      copiedLinks.value.delete(candidate.id)
+    }, 2000)
+  }
 }
 
 // Close dropdown when clicking outside
@@ -700,7 +749,6 @@ if (typeof window !== 'undefined') {
               >
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="text-sm font-medium text-gray-900">{{ candidate.fullName }}</div>
-
                   <div class="text-xs text-gray-400 mt-1">
                     {{ getVacancyTitle(candidate.vacancyId) }}
                   </div>
@@ -736,13 +784,61 @@ if (typeof window !== 'undefined') {
                   <span v-else class="text-sm text-gray-400">—</span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                  <button
-                    @click.stop="removeCandidate(candidate.id)"
-                    :disabled="isLoading"
-                    class="text-red-600 cursor-pointer hover:text-red-800 font-medium text-sm transition-colors duration-150 disabled:opacity-50"
-                  >
-                    Удалить
-                  </button>
+                  <div class="flex items-center space-x-3">
+                    <!-- Copy Call Link Button -->
+                    <button
+                      v-if="candidate.callLink && !shouldShowDash(candidate)"
+                      @click.stop="copyCallLink(candidate)"
+                      :disabled="isLoading"
+                      class="group inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm transition-all duration-150 disabled:opacity-50"
+                      :title="
+                        copiedLinks.has(candidate.id)
+                          ? 'Ссылка скопирована!'
+                          : 'Скопировать ссылку на созвон'
+                      "
+                    >
+                      <svg
+                        v-if="!copiedLinks.has(candidate.id)"
+                        class="h-4 w-4 mr-1 group-hover:scale-110 transition-transform duration-150"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                        />
+                      </svg>
+                      <svg
+                        v-else
+                        class="h-4 w-4 mr-1 text-green-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
+                      <span :class="{ 'text-green-600': copiedLinks.has(candidate.id) }">
+                        {{ copiedLinks.has(candidate.id) ? 'Скопировано' : 'Созвон' }}
+                      </span>
+                    </button>
+
+                    <!-- Delete Button -->
+                    <button
+                      @click.stop="removeCandidate(candidate.id)"
+                      :disabled="isLoading"
+                      class="text-red-600 hover:text-red-800 font-medium text-sm transition-colors duration-150 disabled:opacity-50"
+                    >
+                      Удалить
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -794,11 +890,54 @@ if (typeof window !== 'undefined') {
                   <span v-else class="text-gray-400 ml-2">—</span>
                 </p>
               </div>
-              <div class="flex items-center space-x-3">
+              <div class="flex items-center space-x-4">
+                <!-- Copy Call Link Button -->
+                <button
+                  v-if="candidate.callLink && !shouldShowDash(candidate)"
+                  @click.stop="copyCallLink(candidate)"
+                  :disabled="isLoading"
+                  class="group inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm transition-all duration-150 disabled:opacity-50"
+                >
+                  <svg
+                    v-if="!copiedLinks.has(candidate.id)"
+                    class="h-4 w-4 mr-1 group-hover:scale-110 transition-transform duration-150"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <svg
+                    v-else
+                    class="h-4 w-4 mr-1 text-green-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  <span :class="{ 'text-green-600': copiedLinks.has(candidate.id) }">
+                    {{
+                      copiedLinks.has(candidate.id) ? 'Скопировано' : 'Скопировать ссылку на созвон'
+                    }}
+                  </span>
+                </button>
+
+                <!-- Delete Button -->
                 <button
                   @click.stop="removeCandidate(candidate.id)"
                   :disabled="isLoading"
-                  class="text-red-600 cursor-pointer hover:text-red-800 font-medium text-sm transition-colors duration-150 disabled:opacity-50"
+                  class="text-red-600 hover:text-red-800 font-medium text-sm transition-colors duration-150 disabled:opacity-50"
                 >
                   Удалить
                 </button>

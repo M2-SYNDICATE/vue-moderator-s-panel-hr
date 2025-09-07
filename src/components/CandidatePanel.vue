@@ -1,12 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import {
-  getCandidateById,
-  sendScheduleInvite,
-  downloadCandidateResume,
-  deleteCandidate,
-} from '@/services/api'
+import { getCandidateById, downloadCandidateResume, deleteCandidate } from '@/services/api'
 
 const route = useRoute()
 const candidateId = Number(route.params.id)
@@ -15,20 +10,50 @@ const candidateId = Number(route.params.id)
 const candidate = ref<any>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
-const isSendingInvitation = ref(false)
-const editEmail = ref('')
-const isEditingEmail = ref(false)
+const linkCopied = ref(false)
 
-// Загружаем кандидата по ID
-onMounted(async () => {
+// Интервал для автообновления
+let updateInterval: ReturnType<typeof setInterval> | null = null
+
+// Функция для сравнения объектов
+const isEqual = (obj1: any, obj2: any): boolean => {
+  return JSON.stringify(obj1) === JSON.stringify(obj2)
+}
+
+// Функция для загрузки данных кандидата
+const loadCandidateData = async (showLoading = true) => {
   try {
+    if (showLoading) loading.value = true
     const response = await getCandidateById(candidateId)
-    candidate.value = response.data
+
+    // Сравниваем с текущими данными
+    if (!candidate.value || !isEqual(candidate.value, response.data)) {
+      candidate.value = response.data
+      console.log('Данные кандидата обновлены')
+    }
   } catch (err) {
     error.value = 'Ошибка при загрузке данных кандидата'
     console.error(err)
   } finally {
-    loading.value = false
+    if (showLoading) loading.value = false
+  }
+}
+
+// Загружаем кандидата по ID при монтировании
+onMounted(async () => {
+  await loadCandidateData(true)
+
+  // Запускаем автообновление каждые 30 секунд
+  updateInterval = setInterval(() => {
+    loadCandidateData(false) // Без показа лоадера для фоновых обновлений
+  }, 30000) // 30 секунд
+})
+
+// Очищаем интервал при размонтировании
+onUnmounted(() => {
+  if (updateInterval) {
+    clearInterval(updateInterval)
+    updateInterval = null
   }
 })
 
@@ -58,14 +83,9 @@ const canPerformActions = computed(() => {
   return candidate.value?.resumeAnalysis === 'suitable'
 })
 
-// Показывать управление созвоном только если приглашение отправлено
-const showCallManagement = computed(() => {
-  return canPerformActions.value && !!candidate.value?.email
-})
-
 // Показывать форму отправки приглашения
-const showInvitationForm = computed(() => {
-  return canPerformActions.value && !candidate.value?.invitationSent
+const showCallManagement = computed(() => {
+  return candidate.value?.resumeAnalysis === 'suitable'
 })
 
 // Форматирование даты и времени
@@ -171,6 +191,33 @@ const saveCallLink = () => {
   isEditingCallLink.value = false
 }
 
+// Добавить методы
+const copyCallLink = async () => {
+  try {
+    await navigator.clipboard.writeText(candidate.value.callLink)
+    linkCopied.value = true
+
+    // Сбросить состояние через 2 секунды
+    setTimeout(() => {
+      linkCopied.value = false
+    }, 2000)
+  } catch (err) {
+    console.error('Не удалось скопировать ссылку:', err)
+    // Fallback для старых браузеров
+    const textArea = document.createElement('textarea')
+    textArea.value = candidate.value.callLink
+    document.body.appendChild(textArea)
+    textArea.select()
+    document.execCommand('copy')
+    document.body.removeChild(textArea)
+
+    linkCopied.value = true
+    setTimeout(() => {
+      linkCopied.value = false
+    }, 2000)
+  }
+}
+
 const cancelEditingCallLink = () => {
   editCallLink.value = ''
   isEditingCallLink.value = false
@@ -221,47 +268,6 @@ const downloadResume = () => {
   downloadCandidateResume(candidate.value.id)
 }
 
-const sendInvitation = async () => {
-  if (!editEmail.value.trim()) {
-    alert('Введите email кандидата')
-    return
-  }
-
-  // Валидация email
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(editEmail.value)) {
-    alert('Введите корректный email адрес')
-    return
-  }
-
-  isSendingInvitation.value = true
-
-  try {
-    // Отправляем приглашение
-    const response = await sendScheduleInvite(candidateId, editEmail.value)
-
-    // Обновляем данные кандидата
-    candidate.value.email = editEmail.value
-    candidate.value.invitationSent = true
-
-    // Опционально: если есть `callDate`, можно установить статус
-    if (candidate.value.callStatus === 'not_planned') {
-      candidate.value.callStatus = 'planned'
-    }
-
-    // Скрываем форму редактирования
-    isEditingEmail.value = false
-    editEmail.value = ''
-
-    console.log('Приглашение отправлено:', response)
-  } catch (error) {
-    console.error('Ошибка при отправке приглашения:', error)
-    alert('Не удалось отправить приглашение. Попробуйте еще раз.')
-  } finally {
-    isSendingInvitation.value = false
-  }
-}
-
 const confirmDelete = async () => {
   if (!candidate.value) return
 
@@ -278,11 +284,6 @@ const confirmDelete = async () => {
     console.error('Ошибка при удалении кандидата:', error)
     alert('Не удалось удалить кандидата. Попробуйте позже.')
   }
-}
-
-const startEditingEmail = () => {
-  editEmail.value = candidate.value?.email || ''
-  isEditingEmail.value = true
 }
 
 // Скачивание PDF отчета
@@ -378,84 +379,21 @@ const downloadPDF = () => {
             </div>
           </div>
 
-          <!-- Invitation form -->
-          <div
-            v-if="showInvitationForm"
-            class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up"
-          >
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">
-              Отправить приглашение кандидату
-            </h2>
-            <p class="text-sm text-gray-600 mb-4">
-              Отправьте кандидату приглашение на собеседование, чтобы узнать удобное время для
-              созвона.
-            </p>
+          <!-- Контактная информация -->
+          <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Контактная информация</h2>
             <div class="space-y-4">
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">Email кандидата</label>
-                <div v-if="!isEditingEmail" class="flex items-center justify-between">
-                  <div class="flex-1">
-                    <div v-if="candidate.email" class="p-3 bg-gray-50 rounded-lg">
-                      <div class="flex items-center space-x-3">
-                        <svg
-                          class="h-5 w-5 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
-                          />
-                        </svg>
-                        <span class="text-sm text-gray-900">{{ candidate.email }}</span>
-                      </div>
-                    </div>
-                    <div v-else class="p-3 bg-gray-50 rounded-lg">
-                      <div class="flex items-center space-x-3">
-                        <svg
-                          class="h-5 w-5 text-gray-400"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
-                          />
-                        </svg>
-                        <span class="text-sm text-gray-500">Email не указан</span>
-                      </div>
-                    </div>
-                  </div>
-                  <button
-                    @click="startEditingEmail"
-                    class="ml-4 text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors duration-150"
-                  >
-                    {{ candidate.email ? 'Изменить' : 'Добавить' }}
-                  </button>
-                </div>
-                <div v-else class="space-y-3">
-                  <input
-                    v-model="editEmail"
-                    type="email"
-                    placeholder="candidate@example.com"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <div class="flex space-x-2">
-                    <button
-                      @click="sendInvitation"
-                      :disabled="isSendingInvitation || !editEmail.trim()"
-                      class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {{ isSendingInvitation ? 'Отправка...' : 'Отправить приглашение' }}
-                    </button>
-                  </div>
-                </div>
+                <dt class="block text-sm font-medium text-gray-700 mb-1">Телефон</dt>
+                <dd class="p-3 bg-gray-50 rounded-lg text-sm text-gray-900 font-mono">
+                  {{ candidate.phone || 'Не указан' }}
+                </dd>
+              </div>
+              <div v-if="candidate.resumeAnalysis !== 'not_suitable'">
+                <dt class="block text-sm font-medium text-gray-700 mb-1">Ответ кандидата</dt>
+                <dd class="p-3 bg-gray-50 rounded-lg text-sm text-gray-900 leading-relaxed">
+                  Кандидат ответил, что готов к собеседованию в любое время.
+                </dd>
               </div>
             </div>
           </div>
@@ -487,11 +425,6 @@ const downloadPDF = () => {
             <div class="mb-6">
               <div class="flex items-center justify-between mb-3">
                 <h3 class="text-sm font-medium text-gray-700">Дата и время созвона</h3>
-                <button
-                  v-if="!isEditingCallDate"
-                  @click="startEditingCallDate"
-                  class="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors duration-150"
-                ></button>
               </div>
               <div v-if="!isEditingCallDate" class="p-4 bg-gray-50 rounded-xl">
                 <div v-if="candidate.callDate" class="flex items-center space-x-3">
@@ -505,7 +438,7 @@ const downloadPDF = () => {
                       stroke-linecap="round"
                       stroke-linejoin="round"
                       stroke-width="2"
-                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
                     />
                   </svg>
                   <span class="text-sm text-gray-900">{{
@@ -552,91 +485,138 @@ const downloadPDF = () => {
               </div>
             </div>
 
-            <!-- Call Link -->
+            <!-- Call Connection -->
             <div>
-              <div class="flex items-center justify-between mb-3">
-                <h3 class="text-sm font-medium text-gray-700">Ссылка на созвон</h3>
-                <button
-                  v-if="!isEditingCallLink"
-                  @click="startEditingCallLink"
-                  class="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors duration-150"
-                ></button>
-              </div>
-              <div v-if="!isEditingCallLink" class="p-4 bg-gray-50 rounded-xl">
-                <div v-if="candidate.callLink" class="flex items-center justify-between">
-                  <div class="flex items-center space-x-3 min-w-0 flex-1">
-                    <svg
-                      class="h-5 w-5 text-blue-600 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+              <h3 class="text-sm font-medium text-gray-700 mb-3">Подключение к созвону</h3>
+              <div class="p-4 bg-gray-50 rounded-xl">
+                <div v-if="candidate.callLink" class="space-y-4">
+                  <!-- Call Link Display -->
+                  <div class="flex items-start space-x-3">
+                    <div
+                      class="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center"
                     >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                      />
-                    </svg>
+                      <svg
+                        class="h-5 w-5 text-blue-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </div>
                     <div class="min-w-0 flex-1">
-                      <p class="text-sm font-medium text-gray-900">Google Meet</p>
-                      <p class="text-xs text-gray-500 font-mono truncate">
-                        {{ candidate.callLink }}
+                      <p class="text-sm font-medium text-gray-900 mb-2">
+                        Ссылка на видеоконференцию
                       </p>
+                      <button
+                        @click="copyCallLink"
+                        class="group w-full text-left p-3 bg-white rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      >
+                        <div class="flex items-center justify-between">
+                          <span
+                            class="text-sm text-blue-600 font-mono break-all group-hover:text-blue-700"
+                          >
+                            {{ candidate.callLink }}
+                          </span>
+                          <div class="flex items-center ml-3 flex-shrink-0">
+                            <svg
+                              v-if="!linkCopied"
+                              class="h-4 w-4 text-gray-400 group-hover:text-blue-600 transition-colors duration-200"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                              />
+                            </svg>
+                            <svg
+                              v-else
+                              class="h-4 w-4 text-green-600"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+                        <p
+                          class="text-xs text-gray-500 mt-1 group-hover:text-blue-600 transition-colors duration-200"
+                        >
+                          {{
+                            linkCopied ? 'Ссылка скопирована!' : 'Нажмите, чтобы скопировать ссылку'
+                          }}
+                        </p>
+                      </button>
                     </div>
                   </div>
-                  <button
-                    @click="openCallLink"
-                    class="ml-4 inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-600 bg-white rounded-lg hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 ring-1 ring-blue-200"
-                  >
-                    <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                      />
-                    </svg>
-                    Открыть
-                  </button>
+
+                  <!-- Connect Button -->
+                  <div class="flex justify-end">
+                    <button
+                      @click="openCallLink"
+                      :disabled="!canPerformActions"
+                      class="relative inline-flex items-center px-4 py-2.5 text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 shadow-lg shadow-green-600/25 hover:shadow-xl hover:shadow-green-600/40 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:ring-offset-2 transition-all duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none group overflow-hidden"
+                    >
+                      <!-- Animated background overlay -->
+                      <div
+                        class="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out"
+                      ></div>
+
+                      <svg
+                        class="h-4 w-4 mr-2 relative z-10"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
+                      </svg>
+                      <span class="relative z-10">Подключиться</span>
+                    </button>
+                  </div>
                 </div>
-                <div v-else class="flex items-center space-x-3">
-                  <svg
-                    class="h-5 w-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                    />
-                  </svg>
-                  <span class="text-sm text-gray-500">Ссылка на созвон не добавлена</span>
-                </div>
-              </div>
-              <div v-else class="space-y-3">
-                <input
-                  v-model="editCallLink"
-                  type="url"
-                  placeholder="https://meet.google.com/..."
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <div class="flex space-x-2">
-                  <button
-                    @click="saveCallLink"
-                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200"
-                  >
-                    Сохранить
-                  </button>
-                  <button
-                    @click="cancelEditingCallLink"
-                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200"
-                  >
-                    Отмена
-                  </button>
+
+                <div v-else class="flex items-center justify-center py-8">
+                  <div class="text-center">
+                    <div
+                      class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3"
+                    >
+                      <svg
+                        class="h-6 w-6 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                        />
+                      </svg>
+                    </div>
+                    <p class="text-sm text-gray-500 font-medium">Ссылка на созвон недоступна</p>
+                    <p class="text-xs text-gray-400 mt-1">Ссылка будет создана автоматически</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -647,9 +627,23 @@ const downloadPDF = () => {
             v-if="candidate.comments"
             class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up"
           >
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Комментарии и заметки AI</h2>
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Комментарии и заметки от AI</h2>
             <div class="prose prose-gray max-w-none">
               <p class="text-gray-700 leading-relaxed">{{ candidate.comments }}</p>
+            </div>
+          </div>
+
+          <!-- AI Report - показывается только если резюме подходит -->
+          <div
+            v-if="candidate.resumeAnalysis === 'suitable'"
+            class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up"
+          >
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Очет от AI</h2>
+            <div class="prose prose-gray max-w-none">
+              <p v-if="candidate.ai_report" class="text-gray-700 leading-relaxed">
+                {{ candidate.ai_report }}
+              </p>
+              <p v-else class="text-gray-500 leading-relaxed">⏳ Отчёт ещё не сформирован</p>
             </div>
           </div>
 

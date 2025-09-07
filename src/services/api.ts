@@ -1,8 +1,7 @@
-// src/services/api.js
-import axios from 'axios'
+import axios, { type AxiosResponse, AxiosError } from 'axios'
 
 // Базовый URL вашего бэкенда
-const API_BASE_URL = 'http://192.168.0.19:8000/crud' // замени на реальный адрес
+const API_BASE_URL = 'http://26.119.64.68:8000/crud'
 
 // Создаём экземпляр axios
 const api = axios.create({
@@ -18,34 +17,59 @@ api.interceptors.response.use(
   },
 )
 
+// ===================== Типы =====================
+
+export interface LoginCredentials {
+  email: string
+  password: string
+}
+
+export interface Vacancy {
+  id: number
+  title: string
+  // добавьте другие поля, если они есть в ответе бэкенда
+}
+
+export interface Candidate {
+  id: number
+  fullName: string
+  vacancyId: number
+  resumeAnalysis: 'suitable' | 'not_suitable' | 'analyzing'
+  callStatus: 'not_planned' | 'planned' | 'in_progress' | 'completed'
+  comments?: string
+  callDate?: string
+  callLink?: string
+}
+
 // ===================== API Методы =====================
 
 // Login
-export const login = async (credentials) => {
+export const login = async (credentials: LoginCredentials): Promise<AxiosResponse<any>> => {
   return await api.post('/login', credentials)
 }
 
 // Получить список вакансий
-export const getVacancies = async () => {
+export const getVacancies = async (): Promise<AxiosResponse<Vacancy[]>> => {
   return await api.get('/vacancies')
 }
 
 // Получить список кандидатов
-export const getCandidates = async () => {
+export const getCandidates = async (): Promise<AxiosResponse<Candidate[]>> => {
   return await api.get('/candidates')
 }
 
 // Получить одного кандидата по ID
-export const getCandidateById = async (candidateId) => {
+export const getCandidateById = async (candidateId: number): Promise<AxiosResponse<Candidate>> => {
   return await api.get(`/candidate/${candidateId}`)
 }
 
 // Удалить кандидата по ID
-export const deleteCandidate = async (candidateId) => {
-  return await api.delete(`/candidate/${candidateId}`)
+export const deleteCandidate = async (candidateId: number): Promise<void> => {
+  await api.delete(`/candidate/${candidateId}`)
 }
 
-export const uploadVacancyFile = async (file) => {
+// Загрузить файл вакансии
+export const uploadVacancyFile = async (file: File): Promise<AxiosResponse<any>> => {
   const formData = new FormData()
   formData.append('info_cv', file)
 
@@ -64,10 +88,10 @@ export const uploadVacancyFile = async (file) => {
     })
     return response
   } catch (error) {
-    if (error.response) {
+    if (error instanceof AxiosError && error.response) {
       try {
-        const text = await error.response.data.text()
-        error.response.data = text
+        const text = await error.response.data.text?.()
+        if (text) error.response.data = text
       } catch {}
     }
     throw error
@@ -75,11 +99,14 @@ export const uploadVacancyFile = async (file) => {
 }
 
 // Добавить кандидата
-export const addCandidate = async (vacancyId, resumeFiles) => {
+export const addCandidate = async (
+  vacancyId: number,
+  resumeFiles: File | File[],
+): Promise<AxiosResponse<any>> => {
   const formData = new FormData()
 
   // Добавляем vacancy_id
-  formData.append('vacancy_id', vacancyId)
+  formData.append('vacancy_id', vacancyId.toString())
 
   // Поддерживаем как один файл, так и массив
   const files = Array.isArray(resumeFiles) ? resumeFiles : [resumeFiles]
@@ -95,10 +122,10 @@ export const addCandidate = async (vacancyId, resumeFiles) => {
     })
     return response
   } catch (error) {
-    if (error.response && error.response.data) {
+    if (error instanceof AxiosError && error.response?.data) {
       try {
-        const text = await error.response.data.text()
-        error.response.data = text
+        const text = await error.response.data.text?.()
+        if (text) error.response.data = text
       } catch (e) {
         console.warn('Could not parse error response as text')
       }
@@ -108,25 +135,24 @@ export const addCandidate = async (vacancyId, resumeFiles) => {
 }
 
 // Удалить вакансию по ID
-export const deleteVacancy = async (vacancyId) => {
-  return await api.delete(`/vacancy/${vacancyId}`)
+export const deleteVacancy = async (vacancyId: number): Promise<void> => {
+  await api.delete(`/vacancy/${vacancyId}`)
 }
 
-export const downloadVacancyFile = async (vacancyId) => {
+// Скачать файл вакансии
+export const downloadVacancyFile = async (vacancyId: number): Promise<void> => {
   const response = await api.get(`/download/vacancy/${vacancyId}`, {
     responseType: 'blob',
   })
 
-  let filename = `vacancy_${vacancyId}` // базовое имя без расширения
+  let filename = `vacancy_${vacancyId}`
 
-  // === Извлечение имени файла из Content-Disposition ===
   const contentDisposition = response.headers['content-disposition']
   const extractedFilename = getFilenameFromContentDisposition(contentDisposition)
 
   if (extractedFilename) {
     filename = extractedFilename
   } else {
-    // === Если имя не пришло — определяем расширение по Content-Type ===
     const contentType = response.headers['content-type']
 
     if (contentType) {
@@ -154,7 +180,6 @@ export const downloadVacancyFile = async (vacancyId) => {
     }
   }
 
-  // === Создаём ссылку и скачиваем файл ===
   const url = window.URL.createObjectURL(new Blob([response.data]))
   const link = document.createElement('a')
   link.href = url
@@ -165,21 +190,20 @@ export const downloadVacancyFile = async (vacancyId) => {
   window.URL.revokeObjectURL(url)
 }
 
-export const downloadCandidateResume = async (candidateId) => {
+// Скачать резюме кандидата
+export const downloadCandidateResume = async (candidateId: number): Promise<void> => {
   const response = await api.get(`/download/candidate/${candidateId}`, {
     responseType: 'blob',
   })
 
   let filename = `resume_${candidateId}`
 
-  // Извлечение имени из Content-Disposition
   const contentDisposition = response.headers['content-disposition']
   const extractedFilename = getFilenameFromContentDisposition(contentDisposition)
 
   if (extractedFilename) {
     filename = extractedFilename
   } else {
-    // Определяем расширение по Content-Type
     const contentType = response.headers['content-type']
 
     if (contentType) {
@@ -207,7 +231,6 @@ export const downloadCandidateResume = async (candidateId) => {
     }
   }
 
-  // Создание ссылки и скачивание
   const url = window.URL.createObjectURL(new Blob([response.data]))
   const link = document.createElement('a')
   link.href = url
@@ -218,8 +241,8 @@ export const downloadCandidateResume = async (candidateId) => {
   window.URL.revokeObjectURL(url)
 }
 
-// === Функция для парсинга Content-Disposition (можно вынести в utils) ===
-function getFilenameFromContentDisposition(contentDisposition) {
+// === Функция для парсинга Content-Disposition ===
+function getFilenameFromContentDisposition(contentDisposition: string | undefined): string | null {
   if (!contentDisposition) return null
 
   // Сначала пробуем filename* (RFC 5987, поддержка Unicode)
@@ -241,7 +264,8 @@ function getFilenameFromContentDisposition(contentDisposition) {
   return null
 }
 
-export const sendScheduleInvite = async (candidateId, email) => {
+// Отправить приглашение на собеседование
+export const sendScheduleInvite = async (candidateId: number, email: string): Promise<any> => {
   try {
     const response = await api.post('/schedule/invite', {
       candidate_id: candidateId,
@@ -249,26 +273,12 @@ export const sendScheduleInvite = async (candidateId, email) => {
     })
     return response.data
   } catch (error) {
-    if (error.response && error.response.data) {
+    if (error instanceof AxiosError && error.response?.data) {
       try {
-        const text = await error.response.data.text()
-        error.response.data = text
+        const text = await error.response.data.text?.()
+        if (text) error.response.data = text
       } catch {}
     }
     throw error
   }
-}
-
-// Экспорт всех методов
-export default {
-  login,
-  getVacancies,
-  getCandidates,
-  getCandidateById,
-  deleteCandidate,
-  uploadVacancyFile,
-  addCandidate,
-  deleteVacancy,
-  sendScheduleInvite,
-  downloadCandidateResume,
 }

@@ -87,7 +87,7 @@ const validateFile = (file: File): string | null => {
 }
 
 // === Добавление файлов ===
-const addFiles = (files: FileList | null) => {
+const addFiles = (files: FileList | null | undefined) => {
   if (!files || files.length === 0) return
 
   const errors: string[] = []
@@ -165,7 +165,11 @@ const submitForm = async () => {
   try {
     await addCandidate(form.vacancyId, form.files)
 
-    emit('candidate-created')
+    emit('candidate-created', {
+      vacancyId: form.vacancyId!,
+      resumeAnalysis: 'analyzing',
+      callStatus: 'not_planned',
+    })
 
     closeModal()
   } catch (err: any) {
