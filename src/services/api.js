@@ -2,7 +2,7 @@
 import axios from 'axios'
 
 // Базовый URL вашего бэкенда
-const API_BASE_URL = 'http://192.168.0.13:8000/crud' // замени на реальный адрес
+const API_BASE_URL = 'http://192.168.0.19:8000/crud' // замени на реальный адрес
 
 // Создаём экземпляр axios
 const api = axios.create({
@@ -165,6 +165,59 @@ export const downloadVacancyFile = async (vacancyId) => {
   window.URL.revokeObjectURL(url)
 }
 
+export const downloadCandidateResume = async (candidateId) => {
+  const response = await api.get(`/download/candidate/${candidateId}`, {
+    responseType: 'blob',
+  })
+
+  let filename = `resume_${candidateId}`
+
+  // Извлечение имени из Content-Disposition
+  const contentDisposition = response.headers['content-disposition']
+  const extractedFilename = getFilenameFromContentDisposition(contentDisposition)
+
+  if (extractedFilename) {
+    filename = extractedFilename
+  } else {
+    // Определяем расширение по Content-Type
+    const contentType = response.headers['content-type']
+
+    if (contentType) {
+      if (contentType.includes('word') || contentType.includes('msword')) {
+        filename += '.doc'
+      } else if (contentType.includes('openxmlformats-officedocument.wordprocessingml.document')) {
+        filename += '.docx'
+      } else if (contentType.includes('pdf')) {
+        filename += '.pdf'
+      } else if (contentType.includes('font/ttf') || contentType.includes('font-truetype')) {
+        filename += '.ttf'
+      } else if (contentType.includes('font/woff')) {
+        filename += '.woff'
+      } else if (contentType.includes('font/woff2')) {
+        filename += '.woff2'
+      } else if (contentType.includes('font/otf')) {
+        filename += '.otf'
+      } else if (contentType.includes('font/')) {
+        filename += '.font'
+      } else {
+        filename += '.bin'
+      }
+    } else {
+      filename += '.bin'
+    }
+  }
+
+  // Создание ссылки и скачивание
+  const url = window.URL.createObjectURL(new Blob([response.data]))
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(url)
+}
+
 // === Функция для парсинга Content-Disposition (можно вынести в utils) ===
 function getFilenameFromContentDisposition(contentDisposition) {
   if (!contentDisposition) return null
@@ -217,4 +270,5 @@ export default {
   addCandidate,
   deleteVacancy,
   sendScheduleInvite,
+  downloadCandidateResume,
 }

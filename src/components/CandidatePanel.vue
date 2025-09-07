@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { getCandidateById, sendScheduleInvite } from '@/services/api'
+import {
+  getCandidateById,
+  sendScheduleInvite,
+  downloadCandidateResume,
+  deleteCandidate,
+} from '@/services/api'
 
-// Получаем ID кандидата из URL
 const route = useRoute()
 const candidateId = Number(route.params.id)
 
@@ -214,13 +218,7 @@ const openCallLink = () => {
 
 // Скачивание резюме
 const downloadResume = () => {
-  if (!canPerformActions.value) {
-    alert('Действие недоступно: резюме не подходит для данной вакансии')
-    return
-  }
-  // Здесь можно вызвать функцию из api.js для скачивания файла
-  // Например: downloadResumeFile(candidate.value.resume.id)
-  console.log('Downloading resume:', candidate.value.resume.name)
+  downloadCandidateResume(candidate.value.id)
 }
 
 const sendInvitation = async () => {
@@ -261,6 +259,24 @@ const sendInvitation = async () => {
     alert('Не удалось отправить приглашение. Попробуйте еще раз.')
   } finally {
     isSendingInvitation.value = false
+  }
+}
+
+const confirmDelete = async () => {
+  if (!candidate.value) return
+
+  if (!confirm(`Вы уверены, что хотите удалить кандидата "${candidateInfo.value.fullName}"?`)) {
+    return
+  }
+
+  try {
+    await deleteCandidate(candidate.value.id)
+    alert('Кандидат успешно удален')
+    // Перенаправляем на главную страницу после удаления
+    window.location.href = '/'
+  } catch (error) {
+    console.error('Ошибка при удалении кандидата:', error)
+    alert('Не удалось удалить кандидата. Попробуйте позже.')
   }
 }
 
@@ -671,7 +687,6 @@ const downloadPDF = () => {
               </div>
               <button
                 @click="downloadResume"
-                :disabled="!canDownloadResume"
                 class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 ring-1"
                 :class="
                   canPerformActions
@@ -812,6 +827,7 @@ const downloadPDF = () => {
               <h3 class="text-lg font-semibold text-gray-900 mb-4">Быстрые действия</h3>
               <div class="space-y-3">
                 <button
+                  @click="confirmDelete"
                   class="w-full inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200"
                 >
                   <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
