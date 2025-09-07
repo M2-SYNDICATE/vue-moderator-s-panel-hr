@@ -1,7 +1,7 @@
 import axios, { type AxiosResponse, AxiosError } from 'axios'
 
 // Базовый URL вашего бэкенда
-const API_BASE_URL = 'http://26.119.64.68:8000/crud'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 // Создаём экземпляр axios
 const api = axios.create({
