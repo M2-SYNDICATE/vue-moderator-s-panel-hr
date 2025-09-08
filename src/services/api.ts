@@ -46,7 +46,7 @@ export interface LoginCredentials {
 export interface Vacancy {
   id: number
   title: string
-  // добавьте другие поля, если они есть в ответе бэкенда
+  // добавьте другие поля, если они есть �� ответе бэкенда
 }
 
 export interface Candidate {
@@ -64,13 +64,31 @@ export interface Candidate {
 
 class ApiClient {
   private client: AxiosInstance
+  private backgroundClient: AxiosInstance
+
+  // Отдельные контроллеры для разных типов фоновых запросов
+  private backgroundControllers: Map<string, AbortController> = new Map()
+
+  // Механизм refresh токенов
   private isRefreshing = false
   private failedQueue: QueueItem[] = []
 
   constructor() {
+    // Основной клиент для пользовательских действий
     this.client = axios.create({
       baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-      timeout: 30000,
+      timeout: 120000, // 2 минуты для загрузки файлов
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      withCredentials: false,
+    })
+
+    // Фоновый клиент для автозапросов
+    this.backgroundClient = axios.create({
+      baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+      timeout: 8000, // 8 секунд для быстрых фоновых запросов
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
@@ -82,69 +100,56 @@ class ApiClient {
   }
 
   private setupInterceptors(): void {
-    // Request interceptor - добавляем токен к каждому запросу
+    // ========== ОСНОВНОЙ КЛИЕНТ (с refresh токенами) ==========
     this.client.interceptors.request.use(
       (config) => {
         const token = authManager.getAccessToken()
         if (token && authManager.isTokenValid()) {
-          // Добавляем Bearer токен в заголовок Authorization (именно так, как ожидает сервер)
           config.headers.Authorization = `Bearer ${token}`
         }
 
-        // Добавляем стандартные заголовки
         config.headers['Accept'] = 'application/json'
 
-        // Content-Type устанавливаем только если это не FormData
         if (!(config.data instanceof FormData)) {
           config.headers['Content-Type'] = 'application/json'
         }
 
-        // Логирование для отладки (можно убрать в продакшене)
-        console.log('🚀 Request:', {
+        console.log('🚀 Main Request:', {
           method: config.method?.toUpperCase(),
           url: `${config.baseURL}${config.url}`,
-          headers: {
-            Authorization: config.headers.Authorization ? 'Bearer ***' : 'Not set',
-            'Content-Type': config.headers['Content-Type'],
-            Accept: config.headers['Accept'],
-          },
+          timeout: config.timeout,
         })
 
         return config
       },
       (error) => {
-        console.error('❌ Request interceptor error:', error)
+        console.error('❌ Main request interceptor error:', error)
         return Promise.reject(error)
       },
     )
 
-    // Response interceptor - обрабатываем ошибки аутентификации
     this.client.interceptors.response.use(
       (response: AxiosResponse) => {
-        // Логирование успешных ответов
-        console.log('✅ Response:', {
+        console.log('✅ Main Response:', {
           status: response.status,
           url: response.config.url,
-          data: response.data,
         })
         return response
       },
       async (error: AxiosError) => {
         const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean }
 
-        // Логирование ошибок
-        console.error('❌ Response error:', {
+        console.error('❌ Main Response error:', {
           status: error.response?.status,
           url: error.config?.url,
           message: error.response?.data || error.message,
         })
 
-        // Обрабатываем 401 ошибки (Unauthorized)
+        // ========== ОБРАБОТКА 401 С REFRESH ТОКЕНАМИ ==========
         if (error.response?.status === 401 && !originalRequest._retry) {
-          console.log('🔄 Token expired, trying to refresh...')
-
           if (this.isRefreshing) {
             // Если уже обновляем токен, добавляем запрос в очередь
+            console.log('⏳ Adding request to refresh queue')
             return new Promise((resolve, reject) => {
               this.failedQueue.push({ resolve, reject })
             })
@@ -162,6 +167,8 @@ class ApiClient {
           originalRequest._retry = true
           this.isRefreshing = true
 
+          console.log('🔄 Starting token refresh...')
+
           try {
             const newToken = await this.refreshToken()
             this.processQueue(null, newToken)
@@ -170,7 +177,7 @@ class ApiClient {
               originalRequest.headers.Authorization = `Bearer ${newToken}`
             }
 
-            console.log('✅ Token refreshed successfully')
+            console.log('✅ Token refreshed, retrying original request')
             return this.client(originalRequest)
           } catch (refreshError) {
             console.error('❌ Token refresh failed:', refreshError)
@@ -185,8 +192,43 @@ class ApiClient {
         return Promise.reject(error)
       },
     )
+
+    // ========== ФОНОВЫЙ КЛИЕНТ (без refresh токенов) ==========
+    this.backgroundClient.interceptors.request.use(
+      (config) => {
+        const token = authManager.getAccessToken()
+        if (token && authManager.isTokenValid()) {
+          config.headers.Authorization = `Bearer ${token}`
+        }
+
+        config.headers['Accept'] = 'application/json'
+        config.headers['Content-Type'] = 'application/json'
+
+        return config
+      },
+      (error) => {
+        return Promise.reject(error)
+      },
+    )
+
+    this.backgroundClient.interceptors.response.use(
+      (response: AxiosResponse) => {
+        return response
+      },
+      async (error: AxiosError) => {
+        // Для фоновых запросов просто логируем ошибки, не делаем refresh
+        if (error.code === 'ECONNABORTED') {
+          console.warn(`⏰ Background timeout: ${error.config?.url}`)
+        } else if (error.response?.status === 401) {
+          console.warn(`🔒 Background 401: ${error.config?.url} (token expired)`)
+        }
+
+        return Promise.reject(error)
+      },
+    )
   }
 
+  // ========== МЕТОДЫ ДЛЯ REFRESH ТОКЕНОВ ==========
   private async refreshToken(): Promise<string> {
     const refreshToken = authManager.getRefreshToken()
 
@@ -224,6 +266,7 @@ class ApiClient {
         token_type: tokenData.token_type || 'Bearer',
       })
 
+      console.log('✅ Token refreshed successfully')
       return tokenData.access_token
     } catch (error) {
       console.error('❌ Token refresh failed:', error)
@@ -233,27 +276,50 @@ class ApiClient {
   }
 
   private processQueue(error: any, token: string | null): void {
-    this.failedQueue.forEach(({ resolve, reject }) => {
+    console.log(`🔄 Processing ${this.failedQueue.length} queued requests`)
+
+    this.failedQueue.forEach(({ resolve, reject }, index) => {
       if (error) {
+        console.log(`❌ Rejecting queued request ${index + 1}`)
         reject(error)
       } else {
+        console.log(`✅ Resolving queued request ${index + 1} with new token`)
         resolve(token)
       }
     })
 
     this.failedQueue = []
+    console.log('🧹 Queue cleared')
   }
 
   private handleAuthError(): void {
     authManager.clearTokens()
 
-    // Перенаправляем на страницу входа только если не находимся уже там
     if (router.currentRoute.value.name !== 'login') {
       router.push({ name: 'login' })
     }
   }
 
-  // Базовые HTTP методы
+  // Отменяем предыдущие фоновые запросы
+  private cancelPreviousBackgroundRequest(url: string): AbortController {
+    const existingController = this.backgroundControllers.get(url)
+    if (existingController) {
+      existingController.abort()
+    }
+
+    const newController = new AbortController()
+    this.backgroundControllers.set(url, newController)
+    return newController
+  }
+
+  // Очищаем контроллер после завершения запроса
+  private cleanupBackgroundController(url: string): void {
+    this.backgroundControllers.delete(url)
+  }
+
+  // ========== HTTP МЕТОДЫ ==========
+
+  // Основные методы (с refresh токенами)
   async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return await this.client.get<T>(url, config)
   }
@@ -286,16 +352,41 @@ class ApiClient {
     return await this.client.delete<T>(url, config)
   }
 
-  // Получение экземпляра axios для прямого использования
+  // Фоновые методы (без refresh токенов, быстро фейлятся)
+  async getBackground<T = any>(
+    url: string,
+    config?: AxiosRequestConfig,
+  ): Promise<AxiosResponse<T>> {
+    const controller = this.cancelPreviousBackgroundRequest(url)
+
+    try {
+      const response = await this.backgroundClient.get<T>(url, {
+        ...config,
+        signal: controller.signal,
+      })
+
+      this.cleanupBackgroundController(url)
+      return response
+    } catch (error) {
+      this.cleanupBackgroundController(url)
+      throw error
+    }
+  }
+
+  // Получение экземпляров axios
   getAxiosInstance(): AxiosInstance {
     return this.client
+  }
+
+  getBackgroundAxiosInstance(): AxiosInstance {
+    return this.backgroundClient
   }
 }
 
 // Создаем единственный экземпляр API клиента
 export const apiClient = new ApiClient()
 
-// Получаем экземпляр axios для совместимости
+// Получаем экземпляры axios для совместимости
 const api = apiClient.getAxiosInstance()
 
 // ===================== API Методы для совместимости =====================
@@ -305,14 +396,23 @@ export const login = async (credentials: LoginCredentials): Promise<AxiosRespons
   return await api.post('/login', credentials)
 }
 
-// Получить список вакансий
+// Получить список вакансий (основной запрос)
 export const getVacancies = async (): Promise<AxiosResponse<Vacancy[]>> => {
   return await api.get('/vacancies')
 }
 
-// Получить список кандидатов
+// Получить список кандидатов (основной запрос)
 export const getCandidates = async (): Promise<AxiosResponse<Candidate[]>> => {
   return await api.get('/candidates')
+}
+
+// Фоновые запросы для автообновления
+export const getVacanciesBackground = async (): Promise<AxiosResponse<Vacancy[]>> => {
+  return await apiClient.getBackground('/vacancies')
+}
+
+export const getCandidatesBackground = async (): Promise<AxiosResponse<Candidate[]>> => {
+  return await apiClient.getBackground('/candidates')
 }
 
 // Получить одного кандидата по ID
@@ -335,6 +435,7 @@ export const uploadVacancyFile = async (file: File): Promise<AxiosResponse<any>>
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 300000, // 5 минут для загрузки файлов
       transformResponse: (data) => {
         try {
           return JSON.parse(data)
@@ -362,13 +463,11 @@ export const addCandidate = async (
 ): Promise<AxiosResponse<any>> => {
   const formData = new FormData()
 
-  // Добавляем vacancy_id
   formData.append('vacancy_id', vacancyId.toString())
 
-  // Поддерживаем как один файл, так и массив
   const files = Array.isArray(resumeFiles) ? resumeFiles : [resumeFiles]
   files.forEach((file) => {
-    formData.append('resumes', file) // ← имя должно быть 'resumes' (как в бэкенде)
+    formData.append('resumes', file)
   })
 
   try {
@@ -376,6 +475,7 @@ export const addCandidate = async (
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      timeout: 300000, // 5 минут для загрузки файлов
     })
     return response
   } catch (error) {
@@ -400,6 +500,7 @@ export const deleteVacancy = async (vacancyId: number): Promise<void> => {
 export const downloadVacancyFile = async (vacancyId: number): Promise<void> => {
   const response = await api.get(`/download/vacancy/${vacancyId}`, {
     responseType: 'blob',
+    timeout: 60000, // 1 минута для скачивания
   })
 
   let filename = `vacancy_${vacancyId}`
@@ -451,6 +552,7 @@ export const downloadVacancyFile = async (vacancyId: number): Promise<void> => {
 export const downloadCandidateResume = async (candidateId: number): Promise<void> => {
   const response = await api.get(`/download/candidate/${candidateId}`, {
     responseType: 'blob',
+    timeout: 60000, // 1 минута для скачивания
   })
 
   let filename = `resume_${candidateId}`
@@ -540,5 +642,4 @@ export const sendScheduleInvite = async (candidateId: number, email: string): Pr
   }
 }
 
-// Экспортируем типы для использования в других файлах
 export type { ApiResponse, PaginatedResponse }

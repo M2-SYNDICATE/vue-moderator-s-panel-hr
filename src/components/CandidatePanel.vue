@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getCandidateById, downloadCandidateResume, deleteCandidate } from '@/services/api'
+import { apiClient } from '@/services/api' // Добавляем импорт apiClient
 
 const route = useRoute()
 const candidateId = Number(route.params.id)
@@ -20,20 +21,38 @@ const isEqual = (obj1: any, obj2: any): boolean => {
   return JSON.stringify(obj1) === JSON.stringify(obj2)
 }
 
+// Создаем фоновую версию запроса для автообновления
+const getCandidateByIdBackground = async (id: number) => {
+  return await apiClient.getBackground(`/candidate/${id}`)
+}
+
 // Функция для загрузки данных кандидата
 const loadCandidateData = async (showLoading = true) => {
   try {
     if (showLoading) loading.value = true
-    const response = await getCandidateById(candidateId)
+
+    // Используем разные запросы для основного и фонового обновления
+    const response = showLoading
+      ? await getCandidateById(candidateId)
+      : await getCandidateByIdBackground(candidateId)
 
     // Сравниваем с текущими данными
     if (!candidate.value || !isEqual(candidate.value, response.data)) {
       candidate.value = response.data
-      console.log('Данные кандидата обновлены')
+      if (showLoading) {
+        console.log('Данные кандидата обновлены')
+      } else {
+        console.log('Данные кандидата обновлены в фоне')
+      }
     }
-  } catch (err) {
-    error.value = 'Ошибка при загрузке данных кандидата'
-    console.error(err)
+  } catch (err: any) {
+    // Для фоновых запросов не показываем ошибки пользователю
+    if (showLoading) {
+      error.value = 'Ошибка при загрузке данных кандидата'
+      console.error(err)
+    } else {
+      console.warn('Фоновое обновление кандидата не удалось:', err.message)
+    }
   } finally {
     if (showLoading) loading.value = false
   }

@@ -6,10 +6,12 @@ import { useRouter } from 'vue-router'
 import {
   getVacancies,
   getCandidates,
+  getVacanciesBackground,
+  getCandidatesBackground,
   deleteVacancy,
   deleteCandidate,
   downloadVacancyFile,
-  type Candidate, // ← добавьте это
+  type Candidate,
 } from '@/services/api'
 
 const router = useRouter()
@@ -64,16 +66,24 @@ const isLoading = ref(false)
 const loadVacancies = async (showLoading = true) => {
   try {
     if (showLoading) isLoading.value = true
-    const response = await getVacancies()
 
-    // Сравниваем с текущ��ми данными
+    // Используем фоновый API для автообновления
+    const response = showLoading ? await getVacancies() : await getVacanciesBackground()
+
     if (!isEqual(vacancies.value, response.data)) {
       vacancies.value = response.data
-      console.log('Данные вакансий обновлены')
+      if (!showLoading) {
+        console.log('📊 Данные вакансий обновлены в фоне')
+      }
     }
-  } catch (err) {
-    console.error('Ошибка загрузки вакансий:', err)
-    if (showLoading) alert('Не удалось загрузить вакансии')
+  } catch (err: any) {
+    // Для фоновых запросов не показываем ошибки пользователю
+    if (showLoading) {
+      console.error('Ошибка загрузки вакансий:', err)
+      alert('Не удалось загрузить вакансии')
+    } else {
+      console.warn('Фоновое обновление вакансий не удалось:', err.message)
+    }
   } finally {
     if (showLoading) isLoading.value = false
   }
@@ -82,16 +92,24 @@ const loadVacancies = async (showLoading = true) => {
 const loadCandidates = async (showLoading = true) => {
   try {
     if (showLoading) isLoading.value = true
-    const response = await getCandidates()
 
-    // Сравниваем с текущими данными
+    // Используем фоновый API для автообновления
+    const response = showLoading ? await getCandidates() : await getCandidatesBackground()
+
     if (!isEqual(candidates.value, response.data)) {
       candidates.value = response.data
-      console.log('Данные кандидатов обновлены')
+      if (!showLoading) {
+        console.log('👥 Данные кандидатов обновлены в фоне')
+      }
     }
-  } catch (err) {
-    console.error('Ошибка загрузки кандидатов:', err)
-    if (showLoading) alert('Не удалось загрузить кандидатов')
+  } catch (err: any) {
+    // Для фоновых запросов не показываем ошибки пользователю
+    if (showLoading) {
+      console.error('Ошибка загрузки кандидатов:', err)
+      alert('Не удалось загрузить кандидатов')
+    } else {
+      console.warn('Фоновое обновление кандидатов не удалось:', err.message)
+    }
   } finally {
     if (showLoading) isLoading.value = false
   }
