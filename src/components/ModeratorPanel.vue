@@ -32,12 +32,6 @@ const isEqual = (obj1: any, obj2: any): boolean => {
 
 onMounted(async () => {
   await Promise.all([loadVacancies(), loadCandidates()])
-
-  // Запускаем автообновление каждые 30 секунд
-  updateInterval = setInterval(() => {
-    loadVacancies(false) // Без показа лоадера для фоновых обновлений
-    loadCandidates(false)
-  }, 30000) // 30 секунд
 })
 
 // Очищаем интервал при размонтировании

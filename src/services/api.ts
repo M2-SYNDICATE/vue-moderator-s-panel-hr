@@ -77,7 +77,7 @@ class ApiClient {
     // Основной клиент для пользовательских действий
     this.client = axios.create({
       baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
-      timeout: 120000, // 2 минуты для загрузки файлов
+      timeout: 300000,
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
@@ -475,7 +475,7 @@ export const addCandidate = async (
       headers: {
         'Content-Type': 'multipart/form-data',
       },
-      timeout: 120000,
+      timeout: 300000,
     })
     return response
   } catch (error) {

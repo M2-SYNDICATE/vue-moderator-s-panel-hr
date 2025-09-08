@@ -396,17 +396,6 @@ const generatePDFContent = (doc: any) => {
 
   let startY = 70
 
-  // Комментарии от ИИ
-  if (candidate.value.comments) {
-    doc.setFontSize(14)
-    doc.text('Комментарии от ИИ:', 20, startY)
-    startY += 10
-    doc.setFontSize(11)
-    const splitComments = doc.splitTextToSize(candidate.value.comments, 170)
-    doc.text(splitComments, 20, startY)
-    startY += splitComments.length * 6 + 5
-  }
-
   // Детализированный отчет от ИИ
   if (
     formattedAIReport.value &&
