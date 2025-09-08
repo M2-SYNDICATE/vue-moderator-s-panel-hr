@@ -435,7 +435,7 @@ export const uploadVacancyFile = async (file: File): Promise<AxiosResponse<any>>
       headers: {
         'Content-Type': 'multipart/form-data',
       },
-      timeout: 300000, // 5 минут для загрузки файлов
+      timeout: 120000,
       transformResponse: (data) => {
         try {
           return JSON.parse(data)
@@ -475,7 +475,7 @@ export const addCandidate = async (
       headers: {
         'Content-Type': 'multipart/form-data',
       },
-      timeout: 300000, // 5 минут для загрузки файлов
+      timeout: 120000,
     })
     return response
   } catch (error) {
