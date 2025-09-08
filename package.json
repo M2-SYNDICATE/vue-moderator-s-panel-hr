@@ -15,8 +15,13 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@fontsource/roboto": "^5.2.6",
     "@tailwindcss/vite": "^4.1.12",
     "axios": "^1.11.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.4",
+    "pdfmake": "^0.2.20",
     "tailwindcss": "^4.1.12",
     "vue": "^3.5.18",
     "vue-router": "^4.5.1"

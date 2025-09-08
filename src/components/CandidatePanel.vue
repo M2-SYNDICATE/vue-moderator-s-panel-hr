@@ -3,6 +3,8 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getCandidateById, downloadCandidateResume, deleteCandidate } from '@/services/api'
 import { apiClient } from '@/services/api' // Добавляем импорт apiClient
+import jsPDF from 'jspdf'
+import 'jspdf-autotable'
 
 const route = useRoute()
 const candidateId = Number(route.params.id)
@@ -237,11 +239,6 @@ const copyCallLink = async () => {
   }
 }
 
-const cancelEditingCallLink = () => {
-  editCallLink.value = ''
-  isEditingCallLink.value = false
-}
-
 // Редактирование даты созвона
 const isEditingCallDate = ref(false)
 const editCallDate = ref('')
@@ -282,6 +279,33 @@ const openCallLink = () => {
   }
 }
 
+const formattedAIReport = computed(() => {
+  if (!candidate.value?.ai_report) return null
+
+  try {
+    // Попробуем распарсить как JSON
+    let reportData: any
+    if (typeof candidate.value.ai_report === 'string') {
+      // Если строка — попробуем распарсить
+      reportData = JSON.parse(candidate.value.ai_report)
+    } else {
+      reportData = candidate.value.ai_report
+    }
+
+    // Преобразуем в массив для отображения
+    const entries = Object.entries(reportData).map(([question, data]: [string, any]) => ({
+      question,
+      passed: data.passed,
+      score: data.score,
+    }))
+
+    return entries
+  } catch (e) {
+    console.error('Ошибка парсинга AI отчета:', e)
+    return null
+  }
+})
+
 // Скачивание резюме
 const downloadResume = () => {
   downloadCandidateResume(candidate.value.id)
@@ -311,7 +335,117 @@ const downloadPDF = () => {
     alert('Действие недоступно: резюме не подходит для данной вакансии')
     return
   }
-  console.log('Downloading PDF report for candidate:', candidate.value.id)
+
+  if (isReportPending.value) {
+    alert('Отчет еще не сформирован')
+    return
+  }
+
+  try {
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+    })
+
+    const fontUrl = '/fonts/Roboto-Regular.ttf'
+
+    const xhr = new XMLHttpRequest()
+    xhr.open('GET', fontUrl, true)
+    xhr.responseType = 'arraybuffer'
+    xhr.onload = function () {
+      if (xhr.status === 200) {
+        const arrayBuffer = xhr.response
+        const base64Font = btoa(
+          new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), ''),
+        )
+
+        const fontName = 'Roboto-Regular'
+        doc.addFileToVFS(fontName + '.ttf', base64Font) // Теперь как строка!
+        doc.addFont(fontName + '.ttf', fontName, 'normal')
+        doc.setFont(fontName)
+
+        generatePDFContent(doc)
+      } else {
+        console.error('Не удалось загрузить шрифт:', fontUrl)
+        fallbackToDefaultFont(doc)
+      }
+    }
+    xhr.onerror = () => {
+      console.error('Ошибка при загрузке шрифта')
+      fallbackToDefaultFont(doc)
+    }
+    xhr.send()
+  } catch (error) {
+    console.error('Ошибка при генерации PDF:', error)
+    alert('Не удалось сгенерировать отчет. Попробуйте позже.')
+  }
+}
+
+// Функция для генерации контента PDF (вызывается после загрузки шрифта)
+const generatePDFContent = (doc: any) => {
+  // Заголовок
+  doc.setFontSize(20)
+  doc.text('Отчет по кандидату', 105, 20, { align: 'center' })
+
+  // Основная информация
+  doc.setFontSize(12)
+  doc.text(`ФИО: ${candidateInfo.value.fullName}`, 20, 40)
+  doc.text(`Вакансия: ${candidate.value.vacancy}`, 20, 50)
+  doc.text(`Дата создания: ${formatDate(candidate.value.createdAt)}`, 20, 60)
+
+  let startY = 70
+
+  // Комментарии от ИИ
+  if (candidate.value.comments) {
+    doc.setFontSize(14)
+    doc.text('Комментарии от ИИ:', 20, startY)
+    startY += 10
+    doc.setFontSize(11)
+    const splitComments = doc.splitTextToSize(candidate.value.comments, 170)
+    doc.text(splitComments, 20, startY)
+    startY += splitComments.length * 6 + 5
+  }
+
+  // Детализированный отчет от ИИ
+  if (
+    formattedAIReport.value &&
+    Array.isArray(formattedAIReport.value) &&
+    formattedAIReport.value.length > 0
+  ) {
+    const tableData = formattedAIReport.value.map((item: any) => [
+      item.question,
+      item.passed ? 'Пройдено' : 'Не пройдено',
+      `${item.score}/10`,
+    ])
+
+    // Используем autoTable
+    ;(doc as any).autoTable({
+      startY: startY,
+      head: [['Вопрос', 'Статус', 'Оценка']],
+      body: tableData,
+      styles: { fontSize: 9, font: 'Roboto-Regular' },
+      headStyles: { fillColor: [22, 160, 133], font: 'Roboto-Regular' },
+      alternateRowStyles: { fillColor: [240, 240, 240] },
+      columnStyles: {
+        0: { cellWidth: 80 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 25 },
+      },
+    })
+
+    startY = (doc as any).lastAutoTable.finalY + 10
+  }
+
+  // Сохраняем PDF
+  doc.save(`Отчет по кандидату ${candidateInfo.value.fullName}.pdf`)
+}
+
+// Резервный вариант: если шрифт не загрузился
+const fallbackToDefaultFont = (doc: any) => {
+  console.warn('Используется стандартный шрифт (без кириллицы)')
+  alert('Не удалось загрузить шрифт. Русские буквы могут отображаться некорректно.')
+  generatePDFContent(doc)
 }
 </script>
 
@@ -367,7 +501,38 @@ const downloadPDF = () => {
                 <h1 class="text-2xl font-bold text-gray-900 mb-2">{{ candidate.title }}</h1>
                 <p class="text-gray-600">{{ candidate.vacancy }}</p>
               </div>
+
+              <!-- Resume download button in header -->
+              <div v-if="candidate.resume" class="flex-shrink-0 ml-4">
+                <button
+                  @click="downloadResume"
+                  class="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 ring-1"
+                  :class="
+                    canPerformActions
+                      ? 'text-blue-700 bg-white hover:bg-gray-50 ring-gray-300'
+                      : 'text-orange-700 bg-orange-50 hover:bg-orange-100 ring-orange-200 border border-orange-300'
+                  "
+                >
+                  <svg
+                    :class="canPerformActions ? 'text-blue-500' : 'text-orange-500'"
+                    class="h-4 w-4 mr-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                  </svg>
+                  <span class="hidden sm:inline">Скачать резюме</span>
+                  <span class="sm:hidden">Скачать</span>
+                </button>
+              </div>
             </div>
+
             <div class="flex items-center space-x-6 text-sm text-gray-500">
               <div class="flex items-center">
                 <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -394,6 +559,24 @@ const downloadPDF = () => {
                 </span>
                 <span v-else-if="canPerformActions" class="text-gray-400">Созвон не назначен</span>
                 <span v-else class="text-gray-400">—</span>
+              </div>
+            </div>
+
+            <!-- Предупреждение о резюме под хедером -->
+            <div
+              v-if="candidate.resume && candidate.resumeAnalysis === 'not_suitable'"
+              class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg"
+            >
+              <div class="flex items-center space-x-2 text-xs text-orange-800">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
+                  />
+                </svg>
+                <span>Резюме не подходит для данной вакансии, но доступно для ознакомления</span>
               </div>
             </div>
           </div>
@@ -657,59 +840,66 @@ const downloadPDF = () => {
             v-if="candidate.resumeAnalysis === 'suitable'"
             class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up"
           >
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Очет от AI</h2>
-            <div class="prose prose-gray max-w-none">
-              <p v-if="candidate.ai_report" class="text-gray-700 leading-relaxed">
-                {{ candidate.ai_report }}
-              </p>
-              <p v-else class="text-gray-500 leading-relaxed">⏳ Отчёт ещё не сформирован</p>
-            </div>
-          </div>
-
-          <!-- Resume -->
-          <div
-            v-if="candidate.resume"
-            class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up"
-          >
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Прикрепленное резюме</h2>
-            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-              <div class="flex items-center space-x-4">
-                <div class="flex-shrink-0">
-                  <svg
-                    :class="canPerformActions ? 'text-blue-500' : 'text-orange-500'"
-                    class="h-10 w-10"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                    />
-                  </svg>
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">Отчет от AI</h2>
+            <div v-if="formattedAIReport && formattedAIReport.length > 0" class="space-y-6">
+              <div
+                v-for="(item, index) in formattedAIReport"
+                :key="index"
+                class="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition-colors duration-200"
+              >
+                <div class="flex items-start justify-between mb-3">
+                  <h3 class="text-sm font-medium text-gray-900 flex-1 pr-4">
+                    {{ item.question }}
+                  </h3>
+                  <div class="flex items-center space-x-2 flex-shrink-0">
+                    <span
+                      :class="[
+                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                        item.passed ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800',
+                      ]"
+                    >
+                      {{ item.passed ? 'Пройдено' : 'Не пройдено' }}
+                    </span>
+                    <span
+                      :class="[
+                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                        item.score >= 7
+                          ? 'bg-green-100 text-green-800'
+                          : item.score >= 4
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800',
+                      ]"
+                    >
+                      Оценка: {{ item.score }}/10
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <p class="text-sm font-medium text-gray-900">{{ candidate.resume.name }}</p>
-                  <p class="text-xs text-gray-500">
-                    {{ formatFileSize(candidate.resume.size) }} • Загружено
-                    {{ formatDate(candidate.resume.uploadDate) }}
-                  </p>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    :class="[
+                      'h-2 rounded-full',
+                      item.score >= 7
+                        ? 'bg-green-500'
+                        : item.score >= 4
+                          ? 'bg-yellow-500'
+                          : 'bg-red-500',
+                    ]"
+                    :style="{ width: `${(item.score / 10) * 100}%` }"
+                  ></div>
                 </div>
               </div>
-              <button
-                @click="downloadResume"
-                class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 ring-1"
-                :class="
-                  canPerformActions
-                    ? 'text-gray-700 bg-white hover:bg-gray-50 ring-gray-300'
-                    : 'text-orange-700 bg-orange-50 hover:bg-orange-100 ring-orange-200 border border-orange-300'
-                "
+            </div>
+            <div v-else-if="candidate.ai_report" class="prose prose-gray max-w-none">
+              <p class="text-gray-700 leading-relaxed">
+                {{ candidate.ai_report }}
+              </p>
+            </div>
+            <div v-else class="text-center py-8">
+              <div
+                class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-yellow-100 mb-3"
               >
                 <svg
-                  :class="canPerformActions ? 'text-gray-500' : 'text-orange-500'"
-                  class="h-4 w-4 mr-2"
+                  class="h-6 w-6 text-yellow-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -718,29 +908,11 @@ const downloadPDF = () => {
                     stroke-linecap="round"
                     stroke-linejoin="round"
                     stroke-width="2"
-                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                Скачать
-              </button>
-            </div>
-
-            <!-- Предупреждение, если резюме не подходит -->
-            <div
-              v-if="candidate.resumeAnalysis === 'not_suitable'"
-              class="mt-3 p-3 bg-orange-50 border border-orange-200 rounded-lg"
-            >
-              <div class="flex items-center space-x-2 text-xs text-orange-800">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                  />
-                </svg>
-                <span>Резюме не подходит для данной вакансии, но доступно для ознакомления</span>
               </div>
+              <p class="text-sm text-gray-500 font-medium">⏳ Отчёт ещё не сформирован</p>
             </div>
           </div>
         </div>
