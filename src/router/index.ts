@@ -4,7 +4,7 @@ import CandidateView from '../views/CandidateView.vue'
 import LoginView from '../views/LoginView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 import DevelopersView from '../views/DevelopersView.vue'
-import { isAuthenticated } from '@/utils/auth'
+import { authService } from '@/services/auth'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -18,16 +18,19 @@ const router = createRouter({
       path: '/',
       name: 'moderator-panel',
       component: ModeratorPanelView,
+      meta: { requiresAuth: true },
     },
     {
       path: '/candidate/:id',
       name: 'candidate',
       component: CandidateView,
+      meta: { requiresAuth: true },
     },
     {
       path: '/developers',
       name: 'developers',
       component: DevelopersView,
+      meta: { requiresAuth: true },
     },
     {
       path: '/:pathMatch(.*)*',
@@ -37,20 +40,23 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to, from, next) => {
-  const isUserAuthenticated = isAuthenticated()
+router.beforeEach(async (to, from, next) => {
+  const requiresAuth = to.matched.some((record) => record.meta.requiresAuth)
+  const isAuthenticated = authService.isAuthenticated()
 
-  if (to.name !== 'login') {
-    if (!isUserAuthenticated) {
+  if (requiresAuth && !isAuthenticated) {
+    // Пытаемся обновить токен перед редиректом
+    const refreshSuccess = await authService.refreshToken()
+    if (!refreshSuccess) {
       return next({ name: 'login' })
     }
-    next()
-  } else if (to.name === 'login') {
-    if (isUserAuthenticated) {
-      return next({ name: 'moderator-panel' })
-    }
-    next()
   }
+
+  if (to.name === 'login' && isAuthenticated) {
+    return next({ name: 'moderator-panel' })
+  }
+
+  next()
 })
 
 export default router

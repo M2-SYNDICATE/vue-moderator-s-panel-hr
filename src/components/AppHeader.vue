@@ -1,9 +1,20 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { logout as authLogout } from '@/utils/auth' // импортируем наш logout
+import { authService } from '@/services/auth'
 
 const router = useRouter()
+
+const handleLogout = async () => {
+  try {
+    await authService.logout()
+    router.push({ name: 'login' })
+  } catch (error) {
+    console.error('Ошибка при выходе:', error)
+    // Даже если запрос не удался, перенаправляем на логин
+    router.push({ name: 'login' })
+  }
+}
 
 const user = ref({
   name: '',
@@ -31,12 +42,6 @@ const toggleUserMenu = () => {
 
 const closeUserMenu = () => {
   isUserMenuOpen.value = false
-}
-
-// Обработчик выхода
-const logout = () => {
-  authLogout()
-  router.push('/login')
 }
 
 // Закрытие меню при клике вне
@@ -196,7 +201,7 @@ onMounted(() => {
                     <div class="border-t border-gray-100 my-2"></div>
 
                     <button
-                      @click="logout"
+                      @click="handleLogout"
                       class="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors duration-150"
                     >
                       <svg
