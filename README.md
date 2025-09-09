@@ -22,7 +22,7 @@ git clone https://github.com/your-org/vue-moderator-s-panel-hr.git
 cd vue-moderator-s-panel-hr
 
 # 2) Установите зависимости
-npm install   # 
+npm install
 
 # 3) Откройте .env и укажите базовый URL вашего FastAPI (или другого) бэкенда:
 VITE_API_BASE_URL=http://localhost:8000
