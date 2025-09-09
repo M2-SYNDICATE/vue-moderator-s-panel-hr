@@ -27,11 +27,9 @@ npm install
 # 3) Откройте .env и укажите базовый URL вашего FastAPI (или другого) бэкенда:
 VITE_API_BASE_URL=https://<ваш домен для сорвиса собеседований>/crud/crud
 
-# 3) Запустите dev-сервер
-npm run dev
+# 3) Запустите билд
+npm run build
 
-# 5) Откройте в браузере
-# Обычно: http://localhost:5173/ (Vite)
 ```
 
 
