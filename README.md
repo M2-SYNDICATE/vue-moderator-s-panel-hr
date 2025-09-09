@@ -25,7 +25,7 @@ cd vue-moderator-s-panel-hr
 npm install
 
 # 3) Откройте .env и укажите базовый URL вашего FastAPI (или другого) бэкенда:
-VITE_API_BASE_URL=http://localhost:8000
+VITE_API_BASE_URL=https://<ваш домен для сорвиса собеседований>/crud/crud
 
 # 3) Запустите dev-сервер
 npm run dev
