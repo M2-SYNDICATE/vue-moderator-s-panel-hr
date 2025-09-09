@@ -738,12 +738,12 @@ if (typeof window !== 'undefined') {
                 <th
                   class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Дата созвона
+                  Дата собеседования
                 </th>
                 <th
                   class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Статус созвона
+                  Статус собеседования
                 </th>
                 <th
                   class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -806,7 +806,7 @@ if (typeof window !== 'undefined') {
                       :title="
                         copiedLinks.has(candidate.id)
                           ? 'Ссылка скопирована!'
-                          : 'Скопировать ссылку на созвон'
+                          : 'Скопировать ссылку на собеседование'
                       "
                     >
                       <svg
@@ -838,7 +838,7 @@ if (typeof window !== 'undefined') {
                         />
                       </svg>
                       <span :class="{ 'text-green-600': copiedLinks.has(candidate.id) }">
-                        {{ copiedLinks.has(candidate.id) ? 'Скопировано' : 'Созвон' }}
+                        {{ copiedLinks.has(candidate.id) ? 'Скопировано' : 'Собеседование' }}
                       </span>
                     </button>
 
@@ -881,7 +881,7 @@ if (typeof window !== 'undefined') {
                   {{ getVacancyTitle(candidate.vacancyId) }}
                 </p>
                 <p class="text-sm text-gray-600">
-                  <span class="font-medium">Созвон:</span>
+                  <span class="font-medium">Собеседование:</span>
                   <span v-if="!shouldShowDash(candidate) && candidate.callDate">
                     {{ formatDateTime(candidate.callDate) }}
                   </span>
@@ -891,7 +891,7 @@ if (typeof window !== 'undefined') {
                   <span v-else class="text-gray-400">—</span>
                 </p>
                 <p class="text-sm text-gray-600">
-                  <span class="font-medium">Статус созвона:</span>
+                  <span class="font-medium">Статус Собеседования:</span>
                   <span
                     v-if="!shouldShowDash(candidate)"
                     :class="getCallStatusColor(candidate.callStatus)"
@@ -940,7 +940,9 @@ if (typeof window !== 'undefined') {
                   </svg>
                   <span :class="{ 'text-green-600': copiedLinks.has(candidate.id) }">
                     {{
-                      copiedLinks.has(candidate.id) ? 'Скопировано' : 'Скопировать ссылку на созвон'
+                      copiedLinks.has(candidate.id)
+                        ? 'Скопировано'
+                        : 'Скопировать ссылку на собеседования'
                     }}
                   </span>
                 </button>

@@ -243,16 +243,6 @@ const copyCallLink = async () => {
 const isEditingCallDate = ref(false)
 const editCallDate = ref('')
 
-const startEditingCallDate = () => {
-  if (candidate.value?.callDate) {
-    const date = new Date(candidate.value.callDate)
-    editCallDate.value = date.toISOString().slice(0, 16)
-  } else {
-    editCallDate.value = ''
-  }
-  isEditingCallDate.value = true
-}
-
 const saveCallDate = () => {
   if (editCallDate.value) {
     candidate.value.callDate = new Date(editCallDate.value).toISOString()
@@ -292,19 +282,33 @@ const formattedAIReport = computed(() => {
       reportData = candidate.value.ai_report
     }
 
-    // Преобразуем в массив для отображения
+    // Проверяем новую структуру данных
+    if (reportData.detailed_report && reportData.score_summary && reportData.final_summary) {
+      return {
+        detailed_report: reportData.detailed_report,
+        score_summary: reportData.score_summary,
+        final_summary: reportData.final_summary,
+      }
+    }
+
     const entries = Object.entries(reportData).map(([question, data]: [string, any]) => ({
       question,
       passed: data.passed,
       score: data.score,
     }))
 
-    return entries
+    return { legacy: entries }
   } catch (e) {
     console.error('Ошибка парсинга AI отчета:', e)
     return null
   }
 })
+
+const isDetailedReportExpanded = ref(false)
+
+const toggleDetailedReport = () => {
+  isDetailedReportExpanded.value = !isDetailedReportExpanded.value
+}
 
 // Скачивание резюме
 const downloadResume = () => {
@@ -394,40 +398,129 @@ const generatePDFContent = (doc: any) => {
   doc.text(`Вакансия: ${candidate.value.vacancy}`, 20, 50)
   doc.text(`Дата создания: ${formatDate(candidate.value.createdAt)}`, 20, 60)
 
-  let startY = 70
+  let startY = 80
 
-  // Детализированный отчет от ИИ
-  if (
-    formattedAIReport.value &&
-    Array.isArray(formattedAIReport.value) &&
-    formattedAIReport.value.length > 0
-  ) {
-    const tableData = formattedAIReport.value.map((item: any) => [
-      item.question,
-      item.passed ? 'Пройдено' : 'Не пройдено',
-      `${item.score}/10`,
-    ])
+  if (formattedAIReport.value) {
+    // Новая структура отчета
+    if (formattedAIReport.value.score_summary && formattedAIReport.value.final_summary) {
+      // Сводка по баллам
+      doc.setFontSize(14)
+      doc.text('Сводка по оценкам', 20, startY)
+      startY += 10
 
-    // Используем autoTable
-    ;(doc as any).autoTable({
-      startY: startY,
-      head: [['Вопрос', 'Статус', 'Оценка']],
-      body: tableData,
-      styles: { fontSize: 9, font: 'Roboto-Regular' },
-      headStyles: { fillColor: [22, 160, 133], font: 'Roboto-Regular' },
-      alternateRowStyles: { fillColor: [240, 240, 240] },
-      columnStyles: {
-        0: { cellWidth: 80 },
-        1: { cellWidth: 30 },
-        2: { cellWidth: 25 },
-      },
-    })
+      doc.setFontSize(10)
+      const summary = formattedAIReport.value.score_summary
+      doc.text(`Общий балл: ${summary.total_score}`, 20, startY)
+      startY += 8
 
-    startY = (doc as any).lastAutoTable.finalY + 10
+      // Баллы по категориям
+      Object.entries(summary.scores_by_category).forEach(([category, score]: [string, any]) => {
+        const categoryName = getCategoryName(category as string)
+        doc.text(`${categoryName}: ${score}`, 30, startY)
+        startY += 6
+      })
+
+      startY += 10
+
+      // Финальное резюме
+      doc.setFontSize(14)
+      doc.text('Заключение', 20, startY)
+      startY += 10
+
+      doc.setFontSize(9)
+      const summaryLines = doc.splitTextToSize(formattedAIReport.value.final_summary, 170)
+      doc.text(summaryLines, 20, startY)
+      startY += summaryLines.length * 4 + 15
+
+      // Детальный отчет
+      if (
+        formattedAIReport.value.detailed_report &&
+        formattedAIReport.value.detailed_report.length > 0
+      ) {
+        doc.setFontSize(14)
+        doc.text('Детальный анализ ответов', 20, startY)
+        startY += 15
+
+        const tableData = formattedAIReport.value.detailed_report.map((item: any) => [
+          item.question,
+          item.answer || 'Нет ответа',
+          item.evaluation.passed ? 'Пройдено' : 'Не пройдено',
+          `${item.evaluation.score}/10`,
+          item.evaluation.feedback,
+        ])
+
+        // Используем autoTable
+        ;(doc as any).autoTable({
+          startY: startY,
+          head: [['Вопрос', 'Ответ кандидата', 'Статус', 'Оценка', 'Обратная связь']],
+          body: tableData,
+          styles: { fontSize: 8, font: 'Roboto-Regular' },
+          headStyles: { fillColor: [22, 160, 133], font: 'Roboto-Regular' },
+          alternateRowStyles: { fillColor: [240, 240, 240] },
+          columnStyles: {
+            0: { cellWidth: 40 },
+            1: { cellWidth: 35 },
+            2: { cellWidth: 20 },
+            3: { cellWidth: 15 },
+            4: { cellWidth: 45 },
+          },
+        })
+      }
+    }
+
+    // Fallback для старой структуры
+    else if (formattedAIReport.value.legacy) {
+      const tableData = formattedAIReport.value.legacy.map((item: any) => [
+        item.question,
+        item.passed ? 'Пройдено' : 'Не пройдено',
+        `${item.score}/10`,
+      ])
+
+      ;(doc as any).autoTable({
+        startY: startY,
+        head: [['Вопрос', 'Статус', 'Оценка']],
+        body: tableData,
+        styles: { fontSize: 9, font: 'Roboto-Regular' },
+        headStyles: { fillColor: [22, 160, 133], font: 'Roboto-Regular' },
+        alternateRowStyles: { fillColor: [240, 240, 240] },
+        columnStyles: {
+          0: { cellWidth: 80 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 25 },
+        },
+      })
+    }
   }
 
   // Сохраняем PDF
   doc.save(`Отчет по кандидату ${candidateInfo.value.fullName}.pdf`)
+}
+
+const getCategoryName = (category: string) => {
+  switch (category) {
+    case 'general_questions':
+      return 'Общие вопросы'
+    case 'hard_skills_questions':
+      return 'Hard Skills'
+    case 'soft_skills_questions':
+      return 'Soft Skills'
+    default:
+      return category
+  }
+}
+
+// Функция для получения цвета категории
+const getCategoryColor = (category: string) => {
+  switch (category) {
+    case 'general_questions':
+      return 'bg-blue-100 text-blue-800'
+    case 'hard_skills_questions':
+      return 'bg-purple-100 text-purple-800'
+    case 'soft_skills_questions':
+      return 'bg-green-100 text-green-800'
+    default:
+      return 'bg-gray-100 text-gray-800'
+  }
 }
 
 // Резервный вариант: если шрифт не загрузился
@@ -595,7 +688,7 @@ const fallbackToDefaultFont = (doc: any) => {
             class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up"
           >
             <div class="flex items-center justify-between mb-4">
-              <h2 class="text-lg font-semibold text-gray-900">Управление созвоном</h2>
+              <h2 class="text-lg font-semibold text-gray-900">Управление собеседованием</h2>
               <div
                 v-if="candidate.invitationSent && !candidate.callDate"
                 class="flex items-center space-x-2 text-sm text-green-600 bg-green-50 px-3 py-1 rounded-full"
@@ -615,7 +708,7 @@ const fallbackToDefaultFont = (doc: any) => {
             <!-- Call Date -->
             <div class="mb-6">
               <div class="flex items-center justify-between mb-3">
-                <h3 class="text-sm font-medium text-gray-700">Дата и время созвона</h3>
+                <h3 class="text-sm font-medium text-gray-700">Дата и время собеседования</h3>
               </div>
               <div v-if="!isEditingCallDate" class="p-4 bg-gray-50 rounded-xl">
                 <div v-if="candidate.callDate" class="flex items-center space-x-3">
@@ -650,7 +743,7 @@ const fallbackToDefaultFont = (doc: any) => {
                       d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                   </svg>
-                  <span class="text-sm text-gray-500">Дата созвона не назначена</span>
+                  <span class="text-sm text-gray-500">Дата собеседования не назначена</span>
                 </div>
               </div>
               <div v-else class="space-y-3">
@@ -678,7 +771,7 @@ const fallbackToDefaultFont = (doc: any) => {
 
             <!-- Call Connection -->
             <div>
-              <h3 class="text-sm font-medium text-gray-700 mb-3">Подключение к созвону</h3>
+              <h3 class="text-sm font-medium text-gray-700 mb-3">Подключение к собеседованию</h3>
               <div class="p-4 bg-gray-50 rounded-xl">
                 <div v-if="candidate.callLink" class="space-y-4">
                   <!-- Call Link Display -->
@@ -830,9 +923,180 @@ const fallbackToDefaultFont = (doc: any) => {
             class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up"
           >
             <h2 class="text-lg font-semibold text-gray-900 mb-4">Отчет от AI</h2>
-            <div v-if="formattedAIReport && formattedAIReport.length > 0" class="space-y-6">
+
+            <!-- Новая структура отчета -->
+            <div
+              v-if="
+                formattedAIReport &&
+                (formattedAIReport.score_summary || formattedAIReport.final_summary)
+              "
+              class="space-y-6"
+            >
+              <!-- Сводка по баллам -->
+              <div v-if="formattedAIReport.score_summary" class="bg-gray-50 rounded-xl p-4">
+                <h3 class="text-sm font-semibold text-gray-900 mb-3">Сводка по оценкам</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div class="bg-white rounded-lg p-3 border border-gray-200">
+                    <div class="text-2xl font-bold text-gray-900">
+                      {{ formattedAIReport.score_summary.total_score }}
+                    </div>
+                    <div class="text-sm text-gray-500">Общий балл</div>
+                  </div>
+                  <div class="space-y-2">
+                    <div
+                      v-for="(score, category) in formattedAIReport.score_summary
+                        .scores_by_category"
+                      :key="category"
+                      class="flex items-center justify-between"
+                    >
+                      <span class="text-xs font-medium text-gray-600">{{
+                        getCategoryName(String(category))
+                      }}</span>
+                      <span class="text-sm font-semibold text-gray-900">{{ score }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Финальное резюме -->
               <div
-                v-for="(item, index) in formattedAIReport"
+                v-if="formattedAIReport.final_summary"
+                class="bg-gray-50 rounded-xl p-4 border border-gray-200"
+              >
+                <h3 class="text-sm font-semibold mb-3">Заключение</h3>
+                <div class="prose prose-sm prose-amber max-w-none">
+                  <p class="leading-relaxed whitespace-pre-line">
+                    {{ formattedAIReport.final_summary }}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Детальный отчет (раскрывающийся) -->
+              <div
+                v-if="
+                  formattedAIReport.detailed_report && formattedAIReport.detailed_report.length > 0
+                "
+              >
+                <button
+                  @click="toggleDetailedReport"
+                  class="w-full flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  <h3 class="text-sm font-semibold text-gray-900">Детальный анализ ответов</h3>
+                  <svg
+                    :class="[
+                      'h-5 w-5 text-gray-500 transition-transform duration-200',
+                      isDetailedReportExpanded ? 'rotate-180' : '',
+                    ]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </button>
+
+                <div v-if="isDetailedReportExpanded" class="mt-4 space-y-4 animate-slide-up">
+                  <div
+                    v-for="(item, index) in formattedAIReport.detailed_report"
+                    :key="index"
+                    class="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition-colors duration-200"
+                  >
+                    <!-- Категория и статус -->
+                    <div class="flex items-start justify-between mb-3">
+                      <span
+                        :class="[
+                          'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                          getCategoryColor(item.category),
+                        ]"
+                      >
+                        {{ getCategoryName(item.category) }}
+                      </span>
+                      <div class="flex items-center space-x-2 flex-shrink-0">
+                        <span
+                          :class="[
+                            'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                            item.evaluation.passed
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800',
+                          ]"
+                        >
+                          {{ item.evaluation.passed ? 'Пройдено' : 'Не пройдено' }}
+                        </span>
+                        <span
+                          :class="[
+                            'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                            item.evaluation.score >= 7
+                              ? 'bg-green-100 text-green-800'
+                              : item.evaluation.score >= 4
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800',
+                          ]"
+                        >
+                          {{ item.evaluation.score }}/10
+                        </span>
+                      </div>
+                    </div>
+
+                    <!-- Вопрос -->
+                    <div class="mb-3">
+                      <h4 class="text-sm font-medium text-gray-900 mb-2">Вопрос:</h4>
+                      <p class="text-sm text-gray-700 leading-relaxed">{{ item.question }}</p>
+                    </div>
+
+                    <!-- Ожидаемый ответ (если есть) -->
+                    <div v-if="item.expected_response" class="mb-3">
+                      <h4 class="text-sm font-medium text-gray-900 mb-2">Ожидаемый ответ:</h4>
+                      <p class="text-sm text-gray-600 leading-relaxed italic">
+                        {{ item.expected_response }}
+                      </p>
+                    </div>
+
+                    <!-- Ответ кандидата -->
+                    <div class="mb-3">
+                      <h4 class="text-sm font-medium text-gray-900 mb-2">Ответ кандидата:</h4>
+                      <div class="bg-gray-50 rounded-lg p-3">
+                        <p class="text-sm text-gray-800 leading-relaxed">
+                          {{ item.answer || 'Нет ответа' }}
+                        </p>
+                      </div>
+                    </div>
+
+                    <!-- Обратная связь -->
+                    <div class="mb-3">
+                      <h4 class="text-sm font-medium text-gray-900 mb-2">Обратная связь:</h4>
+                      <p class="text-sm text-gray-700 leading-relaxed">
+                        {{ item.evaluation.feedback }}
+                      </p>
+                    </div>
+
+                    <!-- Прогресс бар -->
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        :class="[
+                          'h-2 rounded-full',
+                          item.evaluation.score >= 7
+                            ? 'bg-green-500'
+                            : item.evaluation.score >= 4
+                              ? 'bg-yellow-500'
+                              : 'bg-red-500',
+                        ]"
+                        :style="{ width: `${(item.evaluation.score / 10) * 100}%` }"
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Fallback для старой структуры -->
+            <div v-else-if="formattedAIReport && formattedAIReport.legacy" class="space-y-6">
+              <div
+                v-for="(item, index) in formattedAIReport.legacy"
                 :key="index"
                 class="border border-gray-200 rounded-xl p-4 hover:bg-gray-50 transition-colors duration-200"
               >
@@ -878,6 +1142,8 @@ const fallbackToDefaultFont = (doc: any) => {
                 </div>
               </div>
             </div>
+
+            <!-- Состояние: отчет еще не сформирован -->
             <div v-else-if="candidate.ai_report" class="prose prose-gray max-w-none">
               <p class="text-gray-700 leading-relaxed">
                 {{ candidate.ai_report }}
@@ -905,7 +1171,6 @@ const fallbackToDefaultFont = (doc: any) => {
             </div>
           </div>
         </div>
-
         <!-- Sidebar -->
         <div class="lg:col-span-1">
           <div class="sticky top-24 space-y-6">
@@ -936,7 +1201,7 @@ const fallbackToDefaultFont = (doc: any) => {
                   </dd>
                 </div>
                 <div>
-                  <dt class="text-sm font-medium text-gray-500 mb-1">Статус созвона</dt>
+                  <dt class="text-sm font-medium text-gray-500 mb-1">Статус собеседования</dt>
                   <dd>
                     <span
                       :class="getCallStatusColor(candidate.callStatus)"

@@ -24,7 +24,7 @@ const developers = ref([
     skills: ['Python', 'FastAPI', 'Flask', 'SQLAlchemy', 'PostgreSQL', 'Docker', 'ML'],
     gradient: 'from-emerald-500 to-teal-600',
     avatar: '/images/avatars/andrey.webp',
-    github: 'https://github.com/andrey-backend',
+    github: 'https://github.com/GECOCIXE',
     initials: 'АБ',
   },
   {
@@ -47,7 +47,7 @@ const developers = ref([
     ],
     gradient: 'from-red-500 to-teal-600',
     avatar: '/images/avatars/ivan.webp',
-    github: 'https://github.com/ivan-ml',
+    github: 'https://github.com/tvivan',
     initials: 'ИА',
   },
   {
@@ -71,8 +71,20 @@ const developers = ref([
     ],
     gradient: 'from-yellow-500 to-teal-600',
     avatar: '/images/avatars/denis.webp',
-    github: 'https://github.com/denis-ml-lead',
+    github: 'https://github.com/T1nnLD',
     initials: 'ДБ',
+  },
+  {
+    id: 5,
+    name: 'Орлова Елизавета',
+    role: 'Аналитик',
+    description:
+      'Аналитик с острым взглядом на данные и сердцем для решений. Она превращает хаос в стратегию, а цифры в историю. В команде хакатона — её интеллект, чёткость и умение видеть за пределами экрана делают разницу.',
+    skills: ['Python & Data Engineering', 'ML System Design & MLOps', ' Team Alignment'],
+    gradient: 'from-blue-500 to-teal-600',
+    avatar: '/images/avatars/Liza.webp',
+    github: '',
+    initials: 'ЕО',
   },
 ])
 
@@ -498,34 +510,99 @@ onUnmounted(() => {
           }px) rotateX(${mouseY * 1}deg) rotateY(${mouseX * 1}deg)`,
         }"
       >
+        <!-- Main Contact Card -->
         <div
-          class="max-w-2xl mx-auto bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl hover:shadow-3xl transition-all duration-500"
+          class="max-w-4xl mx-auto bg-white/5 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl hover:shadow-3xl transition-all duration-500 mb-12"
         >
-          <h2 class="text-3xl font-bold text-white mb-6 drop-shadow-lg hover-text">
+          <h2 class="text-4xl font-bold text-white mb-4 drop-shadow-lg hover-text">
             Связаться с нами
           </h2>
-          <p class="text-gray-300 mb-8 drop-shadow-sm hover-text">
-            Готовы обсудить ваш проект? Напишите нам в Telegram!
+          <p class="text-xl text-gray-300 mb-8 drop-shadow-sm hover-text max-w-2xl mx-auto">
+            Готовы обсудить ваш проект? Свяжитесь с нами любым удобным способом!
           </p>
 
-          <!-- Telegram Link для M2 Syndicate -->
-          <a
-            href="https://t.me/m2SYNDICATE"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 group/btn shadow-lg button-3d"
-          >
-            <svg
-              class="w-6 h-6 mr-3 group-hover/btn:rotate-12 transition-transform duration-300"
-              fill="currentColor"
-              viewBox="0 0 24 24"
+          <!-- Contact Buttons Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Telegram Link -->
+            <a
+              href="https://t.me/m2SYNDICATE"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="group relative overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-2xl p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 shadow-lg button-3d"
             >
-              <path
-                d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.14-.26.26-.429.26l.213-3.05 5.56-5.02c.24-.213-.054-.334-.373-.12l-6.87 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"
-              />
-            </svg>
-            Написать в M2 Syndicate
-          </a>
+              <!-- Background Animation -->
+              <div
+                class="absolute inset-0 bg-gradient-to-r from-cyan-400/20 to-pink-400/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              ></div>
+
+              <div class="relative z-10 flex items-center justify-center">
+                <svg
+                  class="w-8 h-8 mr-4 group-hover:rotate-12 transition-transform duration-300"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.14-.26.26-.429.26l.213-3.05 5.56-5.02c.24-.213-.054-.334-.373-.12l-6.87 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"
+                  />
+                </svg>
+                <div class="text-left">
+                  <div class="text-lg font-bold">Telegram</div>
+                  <div class="text-sm opacity-90">@m2SYNDICATE</div>
+                </div>
+              </div>
+            </a>
+
+            <!-- GitHub Organization Link -->
+            <a
+              href="https://github.com/M2-Syndicate"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="group relative overflow-hidden bg-gradient-to-r from-gray-800 to-gray-900 text-white font-semibold rounded-2xl p-6 hover:shadow-2xl transform hover:scale-105 transition-all duration-300 shadow-lg button-3d border border-gray-700"
+            >
+              <!-- Background Animation -->
+              <div
+                class="absolute inset-0 bg-gradient-to-r from-gray-600/20 to-gray-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+              ></div>
+
+              <div class="relative z-10 flex items-center justify-center">
+                <svg
+                  class="w-8 h-8 mr-4 group-hover:rotate-12 transition-transform duration-300"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"
+                  />
+                </svg>
+                <div class="text-left">
+                  <div class="text-lg font-bold">GitHub</div>
+                  <div class="text-sm opacity-90">Организация</div>
+                </div>
+              </div>
+            </a>
+          </div>
+
+          <!-- Additional Contact Info -->
+          <div class="text-center">
+            <p class="text-gray-400 text-sm mb-4">Или свяжитесь с нашим руководителем проекта</p>
+            <a
+              href="https://t.me/T1nnLD"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center px-6 py-3 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-xl backdrop-blur-sm border border-white/20 hover:border-white/30 transition-all duration-300 group/btn shadow-lg hover:shadow-xl transform hover:scale-105"
+            >
+              <svg
+                class="w-4 h-4 mr-2 group-hover/btn:rotate-12 transition-transform duration-300"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.14-.26.26-.429.26l.213-3.05 5.56-5.02c.24-.213-.054-.334-.373-.12l-6.87 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"
+                />
+              </svg>
+              Руководитель проекта
+            </a>
+          </div>
         </div>
       </div>
     </section>
@@ -856,7 +933,6 @@ onUnmounted(() => {
   box-shadow: 0 4px 20px rgba(59, 130, 246, 0.5);
 }
 
-/* Дополнительные эффекты для мобильных устро��ств */
 @media (hover: none) and (pointer: coarse) {
   .card-3d:active {
     transform: scale(0.98);
