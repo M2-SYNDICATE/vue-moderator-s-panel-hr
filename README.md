@@ -24,6 +24,9 @@ cd vue-moderator-s-panel-hr
 # 2) Установите зависимости
 npm install   # 
 
+# 3) Откройте .env и укажите базовый URL вашего FastAPI (или другого) бэкенда:
+VITE_API_BASE_URL=http://localhost:8000
+
 # 3) Запустите dev-сервер
 npm run dev
 
