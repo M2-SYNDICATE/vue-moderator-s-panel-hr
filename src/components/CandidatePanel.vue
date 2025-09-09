@@ -173,7 +173,7 @@ const getCallStatusText = (status: string) => {
     case 'in_progress':
       return 'Проходит'
     case 'completed':
-      return 'Прошел'
+      return 'Завершен'
     default:
       return 'Неизвестно'
   }
