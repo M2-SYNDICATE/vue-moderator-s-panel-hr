@@ -261,6 +261,25 @@ const cancelEditingCallDate = () => {
   isEditingCallDate.value = false
 }
 
+const processMarkdown = (text: string): string => {
+  if (!text) return ''
+
+  // Заменяем **текст** на <strong>текст</strong>
+  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+
+  // Заменяем *текст* или _текст_ на <em>текст</em>
+  text = text.replace(/\*(.*?)\*/g, '<em>$1</em>')
+  text = text.replace(/_(.*?)_/g, '<em>$1</em>')
+
+  return text
+}
+
+const sanitizeHTML = (html: string) => {
+  const div = document.createElement('div')
+  div.textContent = html
+  return div.innerHTML
+}
+
 // Открытие ссылки на созвон
 const openCallLink = () => {
   if (!canPerformActions.value) return
@@ -965,9 +984,10 @@ const fallbackToDefaultFont = (doc: any) => {
               >
                 <h3 class="text-sm font-semibold mb-3">Заключение</h3>
                 <div class="prose prose-sm prose-amber max-w-none">
-                  <p class="leading-relaxed whitespace-pre-line">
-                    {{ formattedAIReport.final_summary }}
-                  </p>
+                  <p
+                    class="leading-relaxed whitespace-pre-line"
+                    v-html="processMarkdown(formattedAIReport.final_summary)"
+                  ></p>
                 </div>
               </div>
 
