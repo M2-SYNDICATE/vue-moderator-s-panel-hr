@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { authService } from '@/services/auth'
+import TimeComponent from '@/components/Time.vue'
 
 const router = useRouter()
 
@@ -52,6 +53,10 @@ onMounted(() => {
 
 <template>
   <div class="min-h-screen bg-gray-50 flex flex-col relative overflow-hidden">
+    <Transition name="fade">
+      <TimeComponent />
+    </Transition>
+
     <!-- Full-screen background image -->
     <div class="absolute inset-0 pointer-events-none">
       <div
