@@ -52,6 +52,17 @@ const currentPage = ref(1)
 const itemsPerPage = ref(5)
 const vacancySearchQuery = ref('')
 
+const selectedResumeAnalysis = ref<string[]>([])
+const selectedCallStatus = ref<string[]>([])
+const isResumeAnalysisDropdownOpen = ref(false)
+const isCallStatusDropdownOpen = ref(false)
+
+const resumeAnalysisButtonRef = ref<HTMLElement | null>(null)
+const callStatusButtonRef = ref<HTMLElement | null>(null)
+
+const resumeAnalysisDropdownPosition = ref({ top: 0, left: 0, openUpward: false })
+const callStatusDropdownPosition = ref({ top: 0, left: 0, openUpward: false })
+
 // Vacancies data
 const vacancies = ref<Vacancy[]>([])
 const candidates = ref<Candidate[]>([])
@@ -124,8 +135,115 @@ const filteredCandidates = computed(() => {
     filtered = filtered.filter((candidate) => candidate.vacancyId === selectedVacancyId.value)
   }
 
+  // Filter by resume analysis (мультивыбор)
+  if (selectedResumeAnalysis.value.length > 0) {
+    filtered = filtered.filter((candidate) =>
+      selectedResumeAnalysis.value.includes(candidate.resumeAnalysis),
+    )
+  }
+
+  // Filter by call status (мультивыбор)
+  if (selectedCallStatus.value.length > 0) {
+    filtered = filtered.filter((candidate) =>
+      selectedCallStatus.value.includes(candidate.callStatus),
+    )
+  }
+
   return filtered
 })
+
+const toggleResumeAnalysisDropdown = () => {
+  if (!isResumeAnalysisDropdownOpen.value && resumeAnalysisButtonRef.value) {
+    const rect = resumeAnalysisButtonRef.value.getBoundingClientRect()
+    const viewportHeight = window.innerHeight
+    const dropdownHeight = 300 // Примерная высота dropdown'а
+
+    // Определяем, открывать ли вверх или вниз
+    const spaceBelow = viewportHeight - rect.bottom
+    const spaceAbove = rect.top
+    const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
+
+    resumeAnalysisDropdownPosition.value = {
+      top: openUpward ? rect.top - dropdownHeight : rect.bottom + 4,
+      left: Math.max(8, Math.min(rect.right - 256, window.innerWidth - 264)), // 256px - ширина dropdown'а
+      openUpward,
+    }
+  }
+  isResumeAnalysisDropdownOpen.value = !isResumeAnalysisDropdownOpen.value
+}
+
+const toggleCallStatusDropdown = () => {
+  if (!isCallStatusDropdownOpen.value && callStatusButtonRef.value) {
+    const rect = callStatusButtonRef.value.getBoundingClientRect()
+    const viewportHeight = window.innerHeight
+    const dropdownHeight = 300 // Примерная высота dropdown'а
+
+    // Определяем, открывать ли вверх или вниз
+    const spaceBelow = viewportHeight - rect.bottom
+    const spaceAbove = rect.top
+    const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
+
+    callStatusDropdownPosition.value = {
+      top: openUpward ? rect.top - dropdownHeight : rect.bottom + 4,
+      left: Math.max(8, Math.min(rect.right - 256, window.innerWidth - 264)), // 256px - ширина dropdown'а
+      openUpward,
+    }
+  }
+  isCallStatusDropdownOpen.value = !isCallStatusDropdownOpen.value
+}
+
+const selectResumeAnalysis = (analysis: string | null) => {
+  if (analysis === null) {
+    selectedResumeAnalysis.value = []
+  } else {
+    const index = selectedResumeAnalysis.value.indexOf(analysis)
+    if (index > -1) {
+      selectedResumeAnalysis.value.splice(index, 1)
+    } else {
+      selectedResumeAnalysis.value.push(analysis)
+    }
+  }
+  currentPage.value = 1
+}
+
+const selectCallStatus = (status: string | null) => {
+  if (status === null) {
+    selectedCallStatus.value = []
+  } else {
+    const index = selectedCallStatus.value.indexOf(status)
+    if (index > -1) {
+      selectedCallStatus.value.splice(index, 1)
+    } else {
+      selectedCallStatus.value.push(status)
+    }
+  }
+  currentPage.value = 1
+}
+
+// Получаем текст для выбранного фильтра
+const selectedResumeAnalysisText = computed(() => {
+  if (selectedResumeAnalysis.value.length === 0) return 'Все статусы анализа'
+  if (selectedResumeAnalysis.value.length === 1) {
+    return getResumeAnalysisText(selectedResumeAnalysis.value[0])
+  }
+  return `Выбрано: ${selectedResumeAnalysis.value.length}`
+})
+
+const selectedCallStatusText = computed(() => {
+  if (selectedCallStatus.value.length === 0) return 'Все статусы собеседования'
+  if (selectedCallStatus.value.length === 1) {
+    return getCallStatusText(selectedCallStatus.value[0])
+  }
+  return `Выбрано: ${selectedCallStatus.value.length}`
+})
+
+const clearAllFilters = () => {
+  selectedVacancyId.value = null
+  selectedResumeAnalysis.value = []
+  selectedCallStatus.value = []
+  searchQuery.value = ''
+  currentPage.value = 1
+}
 
 const paginatedCandidates = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage.value
@@ -371,8 +489,23 @@ const copyCallLink = async (candidate: Candidate) => {
 // Close dropdown when clicking outside
 const closeDropdownOnClickOutside = (event: Event) => {
   const target = event.target as HTMLElement
+
   if (!target.closest('.vacancy-dropdown')) {
     isVacancyDropdownOpen.value = false
+  }
+
+  if (
+    !target.closest('[data-dropdown="resume-analysis"]') &&
+    !resumeAnalysisButtonRef.value?.contains(target)
+  ) {
+    isResumeAnalysisDropdownOpen.value = false
+  }
+
+  if (
+    !target.closest('[data-dropdown="call-status"]') &&
+    !callStatusButtonRef.value?.contains(target)
+  ) {
+    isCallStatusDropdownOpen.value = false
   }
 }
 
@@ -730,20 +863,79 @@ if (typeof window !== 'undefined') {
                 >
                   ФИО кандидата
                 </th>
+                <!-- Анализ резюме с фильтром -->
                 <th
                   class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Анализ резюме
+                  <div class="flex items-center space-x-2">
+                    <span>Анализ резюме</span>
+                    <div class="relative">
+                      <button
+                        ref="resumeAnalysisButtonRef"
+                        @click="toggleResumeAnalysisDropdown"
+                        class="p-1 hover:bg-gray-200 rounded transition-colors duration-150"
+                        :class="{ 'bg-blue-100': selectedResumeAnalysis.length > 0 }"
+                      >
+                        <svg
+                          class="h-4 w-4 text-gray-400 transition-transform duration-200"
+                          :class="{
+                            'rotate-180': isResumeAnalysisDropdownOpen,
+                            'text-blue-600': selectedResumeAnalysis.length > 0,
+                          }"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
                 </th>
+
                 <th
                   class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
                   Дата собеседования
                 </th>
+                <!-- Статус собеседования с фильтром -->
                 <th
                   class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Статус собеседования
+                  <div class="flex items-center space-x-2">
+                    <span>Статус собеседования</span>
+                    <div class="relative">
+                      <button
+                        ref="callStatusButtonRef"
+                        @click="toggleCallStatusDropdown"
+                        class="p-1 hover:bg-gray-200 rounded transition-colors duration-150"
+                        :class="{ 'bg-blue-100': selectedCallStatus.length > 0 }"
+                      >
+                        <svg
+                          class="h-4 w-4 text-gray-400 transition-transform duration-200"
+                          :class="{
+                            'rotate-180': isCallStatusDropdownOpen,
+                            'text-blue-600': selectedCallStatus.length > 0,
+                          }"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
                 </th>
                 <th
                   class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
@@ -969,6 +1161,16 @@ if (typeof window !== 'undefined') {
             viewBox="0 0 24 24"
           >
             <path
+              v-if="
+                searchQuery || selectedVacancyId || selectedResumeAnalysis || selectedCallStatus
+              "
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+            <path
+              v-else
               stroke-linecap="round"
               stroke-linejoin="round"
               stroke-width="1.5"
@@ -976,30 +1178,59 @@ if (typeof window !== 'undefined') {
             />
           </svg>
           <h3 class="text-lg font-medium text-gray-900 mb-2">
-            {{ searchQuery || selectedVacancyId ? 'Ничего не найдено' : 'Нет кандидатов' }}
+            {{
+              searchQuery || selectedVacancyId || selectedResumeAnalysis || selectedCallStatus
+                ? 'Кандидаты не найдены'
+                : 'Нет кандидатов'
+            }}
           </h3>
           <p class="text-gray-500 mb-6">
             {{
-              searchQuery || selectedVacancyId
+              searchQuery || selectedVacancyId || selectedResumeAnalysis || selectedCallStatus
                 ? 'Попробуйте изменить фильтры или поисковый запрос'
                 : 'Добавьте первого кандидата для начала работы'
             }}
           </p>
-          <button
-            v-if="!searchQuery && !selectedVacancyId"
-            @click="openCandidateModal"
-            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-green-600 bg-green-50 hover:bg-green-100 transition-colors duration-200"
+
+          <!-- Показываем кнопку добавления только когда нет активных фильтров -->
+          <div
+            v-if="
+              !searchQuery && !selectedVacancyId && !selectedResumeAnalysis && !selectedCallStatus
+            "
           >
-            <svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              />
-            </svg>
-            Добавить кандидата
-          </button>
+            <button
+              @click="openCandidateModal"
+              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-green-600 bg-green-50 hover:bg-green-100 transition-colors duration-200"
+            >
+              <svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                />
+              </svg>
+              Добавить кандидата
+            </button>
+          </div>
+
+          <!-- Показываем кнопку очистки фильтров когда есть активные фильтры -->
+          <div v-else>
+            <button
+              @click="clearAllFilters"
+              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-xl text-blue-600 bg-blue-50 hover:bg-blue-100 transition-colors duration-200"
+            >
+              <svg class="-ml-1 mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+              Очистить все фильтры
+            </button>
+          </div>
         </div>
 
         <!-- Pagination -->
@@ -1076,6 +1307,145 @@ if (typeof window !== 'undefined') {
           </div>
         </div>
       </div>
+
+      <!-- Resume Analysis Dropdown -->
+      <Teleport to="body">
+        <Transition
+          enter-active-class="transition duration-200 ease-out"
+          enter-from-class="transform scale-95 opacity-0"
+          enter-to-class="transform scale-100 opacity-100"
+          leave-active-class="transition duration-150 ease-in"
+          leave-from-class="transform scale-100 opacity-100"
+          leave-to-class="transform scale-95 opacity-0"
+        >
+          <div
+            v-if="isResumeAnalysisDropdownOpen"
+            data-dropdown="resume-analysis"
+            class="fixed z-[9999] w-64 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5"
+            :style="{
+              top: resumeAnalysisDropdownPosition.top + 'px',
+              left: resumeAnalysisDropdownPosition.left + 'px',
+            }"
+          >
+            <div class="py-1">
+              <!-- Очистить все -->
+              <div
+                @click="selectResumeAnalysis(null)"
+                class="px-4 py-2 cursor-pointer hover:bg-gray-50 text-sm text-gray-900 transition-colors duration-150 border-b border-gray-100"
+              >
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-red-600">Очистить все</span>
+                  <span class="text-xs text-gray-500">{{ candidates.length }}</span>
+                </div>
+              </div>
+              <!-- Отдельные статусы с чекбоксами -->
+              <div
+                v-for="status in ['suitable', 'not_suitable', 'analyzing']"
+                :key="status"
+                @click="selectResumeAnalysis(status)"
+                class="px-4 py-2 cursor-pointer hover:bg-gray-50 text-sm text-gray-900 transition-colors duration-150"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-3">
+                    <!-- Чекбокс -->
+                    <div class="flex items-center">
+                      <input
+                        type="checkbox"
+                        :checked="selectedResumeAnalysis.includes(status)"
+                        @click.stop
+                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        readonly
+                      />
+                    </div>
+                    <span
+                      :class="getResumeAnalysisColor(status)"
+                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ring-1 ring-inset"
+                    >
+                      {{ getResumeAnalysisText(status) }}
+                    </span>
+                  </div>
+                  <span class="text-xs text-gray-500">
+                    {{ candidates.filter((c) => c.resumeAnalysis === status).length }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
+
+      <!-- Call Status Dropdown -->
+      <Teleport to="body">
+        <Transition
+          enter-active-class="transition duration-200 ease-out"
+          enter-from-class="transform scale-95 opacity-0"
+          enter-to-class="transform scale-100 opacity-100"
+          leave-active-class="transition duration-150 ease-in"
+          leave-from-class="transform scale-100 opacity-100"
+          leave-to-class="transform scale-95 opacity-0"
+        >
+          <div
+            v-if="isCallStatusDropdownOpen"
+            data-dropdown="call-status"
+            class="fixed z-[9999] w-64 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5"
+            :style="{
+              top: callStatusDropdownPosition.top + 'px',
+              left: callStatusDropdownPosition.left + 'px',
+            }"
+          >
+            <div class="py-1">
+              <!-- Очистить все -->
+              <div
+                @click="selectCallStatus(null)"
+                class="px-4 py-2 cursor-pointer hover:bg-gray-50 text-sm text-gray-900 transition-colors duration-150 border-b border-gray-100"
+              >
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-red-600">Очистить все</span>
+                  <span class="text-xs text-gray-500">{{ candidates.length }}</span>
+                </div>
+              </div>
+              <!-- Отдельные статусы с чекбоксами -->
+              <div
+                v-for="status in ['not_planned', 'planned', 'in_progress', 'completed']"
+                :key="status"
+                @click="selectCallStatus(status)"
+                class="px-4 py-2 cursor-pointer hover:bg-gray-50 text-sm text-gray-900 transition-colors duration-150"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-3">
+                    <!-- Чекбокс -->
+                    <div class="flex items-center">
+                      <input
+                        type="checkbox"
+                        :checked="selectedCallStatus.includes(status)"
+                        @click.stop
+                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        readonly
+                      />
+                    </div>
+                    <span
+                      :class="getCallStatusColor(status)"
+                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ring-1 ring-inset"
+                    >
+                      {{ getCallStatusText(status) }}
+                    </span>
+                  </div>
+                  <span class="text-xs text-gray-500">
+                    {{ candidates.filter((c) => c.callStatus === status).length }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
+
+      <!-- Добавляем обработчик клика вне dropdown'ов для их закрытия -->
+      <div
+        v-if="isResumeAnalysisDropdownOpen || isCallStatusDropdownOpen"
+        @click="((isResumeAnalysisDropdownOpen = false), (isCallStatusDropdownOpen = false))"
+        class="fixed inset-0 z-[9998]"
+      ></div>
 
       <!-- Modals -->
       <CreateVacancyModal
