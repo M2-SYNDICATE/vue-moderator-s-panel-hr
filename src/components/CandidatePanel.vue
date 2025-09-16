@@ -303,9 +303,30 @@ const formattedAIReport = computed(() => {
 
     // Проверяем новую структуру данных
     if (reportData.detailed_report && reportData.score_summary && reportData.final_summary) {
+      // Вычисляем максимальные баллы на основе detailed_report
+      const maxScoresByCategory: Record<string, number> = {}
+      let maxTotalScore = 0
+
+      // Подсчитываем количество вопросов в каждой категории
+      reportData.detailed_report.forEach((item: any) => {
+        const category = item.category
+        if (!maxScoresByCategory[category]) {
+          maxScoresByCategory[category] = 0
+        }
+        maxScoresByCategory[category] += 10 // каждый вопрос максимум 10 баллов
+        maxTotalScore += 10
+      })
+
+      // Дополняем score_summary максимальными значениями
+      const enhancedScoreSummary = {
+        ...reportData.score_summary,
+        max_total_score: maxTotalScore,
+        max_scores_by_category: maxScoresByCategory,
+      }
+
       return {
         detailed_report: reportData.detailed_report,
-        score_summary: reportData.score_summary,
+        score_summary: enhancedScoreSummary,
         final_summary: reportData.final_summary,
       }
     }
@@ -958,6 +979,12 @@ const fallbackToDefaultFont = (doc: any) => {
                   <div class="bg-white rounded-lg p-3 border border-gray-200">
                     <div class="text-2xl font-bold text-gray-900">
                       {{ formattedAIReport.score_summary.total_score }}
+                      <span
+                        v-if="formattedAIReport.score_summary.max_total_score"
+                        class="text-lg font-medium text-gray-500"
+                      >
+                        из {{ formattedAIReport.score_summary.max_total_score }}
+                      </span>
                     </div>
                     <div class="text-sm text-gray-500">Общий балл</div>
                   </div>
@@ -971,7 +998,18 @@ const fallbackToDefaultFont = (doc: any) => {
                       <span class="text-xs font-medium text-gray-600">{{
                         getCategoryName(String(category))
                       }}</span>
-                      <span class="text-sm font-semibold text-gray-900">{{ score }}</span>
+                      <span class="text-sm font-semibold text-gray-900">
+                        {{ score }}
+                        <span
+                          v-if="
+                            formattedAIReport.score_summary.max_scores_by_category &&
+                            formattedAIReport.score_summary.max_scores_by_category[category]
+                          "
+                          class="text-xs font-medium text-gray-500"
+                        >
+                          из {{ formattedAIReport.score_summary.max_scores_by_category[category] }}
+                        </span>
+                      </span>
                     </div>
                   </div>
                 </div>
