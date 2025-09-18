@@ -54,14 +54,18 @@ const vacancySearchQuery = ref('')
 
 const selectedResumeAnalysis = ref<string[]>([])
 const selectedCallStatus = ref<string[]>([])
+const selectedTotalScore = ref<string[]>([])
 const isResumeAnalysisDropdownOpen = ref(false)
 const isCallStatusDropdownOpen = ref(false)
+const isTotalScoreDropdownOpen = ref(false)
 
 const resumeAnalysisButtonRef = ref<HTMLElement | null>(null)
 const callStatusButtonRef = ref<HTMLElement | null>(null)
+const totalScoreButtonRef = ref<HTMLElement | null>(null)
 
 const resumeAnalysisDropdownPosition = ref({ top: 0, left: 0, openUpward: false })
 const callStatusDropdownPosition = ref({ top: 0, left: 0, openUpward: false })
+const totalScoreDropdownPosition = ref({ top: 0, left: 0, openUpward: false })
 
 // Vacancies data
 const vacancies = ref<Vacancy[]>([])
@@ -149,12 +153,63 @@ const filteredCandidates = computed(() => {
     )
   }
 
+  // Filter by total score (мультивыбор)
+  if (selectedTotalScore.value.length > 0) {
+    filtered = filtered.filter((candidate) => {
+      if (candidate.callStatus !== 'completed') return false
+      const scoreCategory = getTotalScoreCategory(candidate.totalScore)
+      return selectedTotalScore.value.includes(scoreCategory)
+    })
+  }
+
   return filtered
 })
 
-const toggleResumeAnalysisDropdown = () => {
-  if (!isResumeAnalysisDropdownOpen.value && resumeAnalysisButtonRef.value) {
-    const rect = resumeAnalysisButtonRef.value.getBoundingClientRect()
+// Функции для общего результата собеседования
+const getTotalScoreCategory = (score: number | undefined): string => {
+  if (score === undefined) return 'unknown'
+  if (score >= 9) return 'excellent'
+  if (score >= 6) return 'good'
+  return 'poor'
+}
+
+const getTotalScoreText = (category: string): string => {
+  switch (category) {
+    case 'excellent':
+      return 'Отлично (9-10)'
+    case 'good':
+      return 'Хорошо (6-8)'
+    case 'poor':
+      return 'Плохо (0-5)'
+    case 'unknown':
+      return 'Неизвестно'
+    default:
+      return 'Неизвестно'
+  }
+}
+
+const getTotalScoreColor = (category: string): string => {
+  switch (category) {
+    case 'excellent':
+      return 'bg-green-50 text-green-700 ring-green-600/20'
+    case 'good':
+      return 'bg-yellow-50 text-yellow-700 ring-yellow-600/20'
+    case 'poor':
+      return 'bg-red-50 text-red-700 ring-red-600/20'
+    case 'unknown':
+      return 'bg-gray-50 text-gray-700 ring-gray-600/20'
+    default:
+      return 'bg-gray-50 text-gray-700 ring-gray-600/20'
+  }
+}
+
+const shouldShowTotalScore = (candidate: Candidate): boolean => {
+  return candidate.callStatus === 'completed' && candidate.totalScore !== undefined
+}
+
+const toggleTotalScoreDropdown = () => {
+  if (!isTotalScoreDropdownOpen.value && totalScoreButtonRef.value) {
+    const rect = totalScoreButtonRef.value.getBoundingClientRect()
     const viewportHeight = window.innerHeight
     const dropdownHeight = 300 // Примерная высота dropdown'а
 
@@ -163,9 +218,43 @@ const toggleResumeAnalysisDropdown = () => {
     const spaceAbove = rect.top
     const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
 
+    totalScoreDropdownPosition.value = {
+      top: openUpward ? rect.top - dropdownHeight : rect.bottom + 4,
+      left: Math.max(8, Math.min(rect.right - 256, window.innerWidth - 264)),
+      openUpward,
+    }
+  }
+  isTotalScoreDropdownOpen.value = !isTotalScoreDropdownOpen.value
+}
+
+const selectTotalScore = (category: string | null) => {
+  if (category === null) {
+    selectedTotalScore.value = []
+  } else {
+    const index = selectedTotalScore.value.indexOf(category)
+    if (index > -1) {
+      selectedTotalScore.value.splice(index, 1)
+    } else {
+      selectedTotalScore.value.push(category)
+    }
+  }
+  currentPage.value = 1
+}
+
+const toggleResumeAnalysisDropdown = () => {
+  if (!isResumeAnalysisDropdownOpen.value && resumeAnalysisButtonRef.value) {
+    const rect = resumeAnalysisButtonRef.value.getBoundingClientRect()
+    const viewportHeight = window.innerHeight
+    const dropdownHeight = 300
+
+    // Определяем, открывать ли вверх или вниз
+    const spaceBelow = viewportHeight - rect.bottom
+    const spaceAbove = rect.top
+    const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
+
     resumeAnalysisDropdownPosition.value = {
       top: openUpward ? rect.top - dropdownHeight : rect.bottom + 4,
-      left: Math.max(8, Math.min(rect.right - 256, window.innerWidth - 264)), // 256px - ширина dropdown'а
+      left: Math.max(8, Math.min(rect.right - 256, window.innerWidth - 264)),
       openUpward,
     }
   }
@@ -176,7 +265,7 @@ const toggleCallStatusDropdown = () => {
   if (!isCallStatusDropdownOpen.value && callStatusButtonRef.value) {
     const rect = callStatusButtonRef.value.getBoundingClientRect()
     const viewportHeight = window.innerHeight
-    const dropdownHeight = 300 // Примерная высота dropdown'а
+    const dropdownHeight = 300
 
     // Определяем, открывать ли вверх или вниз
     const spaceBelow = viewportHeight - rect.bottom
@@ -185,7 +274,7 @@ const toggleCallStatusDropdown = () => {
 
     callStatusDropdownPosition.value = {
       top: openUpward ? rect.top - dropdownHeight : rect.bottom + 4,
-      left: Math.max(8, Math.min(rect.right - 256, window.innerWidth - 264)), // 256px - ширина dropdown'а
+      left: Math.max(8, Math.min(rect.right - 256, window.innerWidth - 264)),
       openUpward,
     }
   }
@@ -220,27 +309,19 @@ const selectCallStatus = (status: string | null) => {
   currentPage.value = 1
 }
 
-// Получаем текст для выбранного фильтра
-const selectedResumeAnalysisText = computed(() => {
-  if (selectedResumeAnalysis.value.length === 0) return 'Все статусы анализа'
-  if (selectedResumeAnalysis.value.length === 1) {
-    return getResumeAnalysisText(selectedResumeAnalysis.value[0])
+const selectedTotalScoreText = computed(() => {
+  if (selectedTotalScore.value.length === 0) return 'Все результаты'
+  if (selectedTotalScore.value.length === 1) {
+    return getTotalScoreText(selectedTotalScore.value[0])
   }
-  return `Выбрано: ${selectedResumeAnalysis.value.length}`
-})
-
-const selectedCallStatusText = computed(() => {
-  if (selectedCallStatus.value.length === 0) return 'Все статусы собеседования'
-  if (selectedCallStatus.value.length === 1) {
-    return getCallStatusText(selectedCallStatus.value[0])
-  }
-  return `Выбрано: ${selectedCallStatus.value.length}`
+  return `Выбрано: ${selectedTotalScore.value.length}`
 })
 
 const clearAllFilters = () => {
   selectedVacancyId.value = null
   selectedResumeAnalysis.value = []
   selectedCallStatus.value = []
+  selectedTotalScore.value = []
   searchQuery.value = ''
   currentPage.value = 1
 }
@@ -507,9 +588,16 @@ const closeDropdownOnClickOutside = (event: Event) => {
   ) {
     isCallStatusDropdownOpen.value = false
   }
+
+  // Добавить эту логику:
+  if (
+    !target.closest('[data-dropdown="total-score"]') &&
+    !totalScoreButtonRef.value?.contains(target)
+  ) {
+    isTotalScoreDropdownOpen.value = false
+  }
 }
 
-// Add event listener for clicking outside
 if (typeof window !== 'undefined') {
   document.addEventListener('click', closeDropdownOnClickOutside)
 }
@@ -940,6 +1028,39 @@ if (typeof window !== 'undefined') {
                 <th
                   class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
+                  <div class="flex items-center space-x-2">
+                    <span>Общий результат</span>
+                    <div class="relative">
+                      <button
+                        ref="totalScoreButtonRef"
+                        @click="toggleTotalScoreDropdown"
+                        class="p-1 hover:bg-gray-200 rounded transition-colors duration-150"
+                        :class="{ 'bg-blue-100': selectedTotalScore.length > 0 }"
+                      >
+                        <svg
+                          class="h-4 w-4 text-gray-400 transition-transform duration-200"
+                          :class="{
+                            'rotate-180': isTotalScoreDropdownOpen,
+                            'text-blue-600': selectedTotalScore.length > 0,
+                          }"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </th>
+                <th
+                  class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
                   Действия
                 </th>
               </tr>
@@ -951,8 +1072,10 @@ if (typeof window !== 'undefined') {
                 @click="openCandidate(candidate.id)"
                 class="hover:bg-gray-50 transition-colors duration-150 cursor-pointer animate-table-row"
               >
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="text-sm font-medium text-gray-900">{{ candidate.fullName }}</div>
+                <td class="px-6 py-4">
+                  <div class="text-sm font-medium text-gray-900 break-words">
+                    {{ candidate.fullName }}
+                  </div>
                   <div class="text-xs text-gray-400 mt-1">
                     {{ getVacancyTitle(candidate.vacancyId) }}
                   </div>
@@ -986,6 +1109,17 @@ if (typeof window !== 'undefined') {
                     {{ getCallStatusText(candidate.callStatus) }}
                   </span>
                   <span v-else class="text-sm text-gray-400">—</span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                  <div v-if="shouldShowTotalScore(candidate)" class="flex items-center space-x-2">
+                    <span
+                      :class="getTotalScoreColor(getTotalScoreCategory(candidate.totalScore))"
+                      class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset"
+                    >
+                      {{ candidate.totalScore }}/10
+                    </span>
+                  </div>
+                  <div v-else class="text-sm text-gray-400">—</div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex items-center space-x-3">
@@ -1162,7 +1296,11 @@ if (typeof window !== 'undefined') {
           >
             <path
               v-if="
-                searchQuery || selectedVacancyId || selectedResumeAnalysis || selectedCallStatus
+                searchQuery ||
+                selectedVacancyId ||
+                selectedResumeAnalysis.length > 0 ||
+                selectedCallStatus.length > 0 ||
+                selectedTotalScore.length > 0
               "
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -1179,14 +1317,22 @@ if (typeof window !== 'undefined') {
           </svg>
           <h3 class="text-lg font-medium text-gray-900 mb-2">
             {{
-              searchQuery || selectedVacancyId || selectedResumeAnalysis || selectedCallStatus
+              searchQuery ||
+              selectedVacancyId ||
+              selectedResumeAnalysis.length > 0 ||
+              selectedCallStatus.length > 0 ||
+              selectedTotalScore.length > 0
                 ? 'Кандидаты не найдены'
                 : 'Нет кандидатов'
             }}
           </h3>
           <p class="text-gray-500 mb-6">
             {{
-              searchQuery || selectedVacancyId || selectedResumeAnalysis || selectedCallStatus
+              searchQuery ||
+              selectedVacancyId ||
+              selectedResumeAnalysis.length > 0 ||
+              selectedCallStatus.length > 0 ||
+              selectedTotalScore.length > 0
                 ? 'Попробуйте изменить фильтры или поисковый запрос'
                 : 'Добавьте первого кандидата для начала работы'
             }}
@@ -1195,7 +1341,11 @@ if (typeof window !== 'undefined') {
           <!-- Показываем кнопку добавления только когда нет активных фильтров -->
           <div
             v-if="
-              !searchQuery && !selectedVacancyId && !selectedResumeAnalysis && !selectedCallStatus
+              !searchQuery &&
+              !selectedVacancyId &&
+              selectedResumeAnalysis.length === 0 &&
+              selectedCallStatus.length === 0 &&
+              selectedTotalScore.length === 0
             "
           >
             <button
@@ -1335,7 +1485,6 @@ if (typeof window !== 'undefined') {
               >
                 <div class="flex items-center justify-between">
                   <span class="font-medium text-red-600">Очистить все</span>
-                  <span class="text-xs text-gray-500">{{ candidates.length }}</span>
                 </div>
               </div>
               <!-- Отдельные статусы с чекбоксами -->
@@ -1364,9 +1513,6 @@ if (typeof window !== 'undefined') {
                       {{ getResumeAnalysisText(status) }}
                     </span>
                   </div>
-                  <span class="text-xs text-gray-500">
-                    {{ candidates.filter((c) => c.resumeAnalysis === status).length }}
-                  </span>
                 </div>
               </div>
             </div>
@@ -1401,7 +1547,6 @@ if (typeof window !== 'undefined') {
               >
                 <div class="flex items-center justify-between">
                   <span class="font-medium text-red-600">Очистить все</span>
-                  <span class="text-xs text-gray-500">{{ candidates.length }}</span>
                 </div>
               </div>
               <!-- Отдельные статусы с чекбоксами -->
@@ -1430,9 +1575,67 @@ if (typeof window !== 'undefined') {
                       {{ getCallStatusText(status) }}
                     </span>
                   </div>
-                  <span class="text-xs text-gray-500">
-                    {{ candidates.filter((c) => c.callStatus === status).length }}
-                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </Transition>
+      </Teleport>
+
+      <Teleport to="body">
+        <Transition
+          enter-active-class="transition duration-200 ease-out"
+          enter-from-class="transform scale-95 opacity-0"
+          enter-to-class="transform scale-100 opacity-100"
+          leave-active-class="transition duration-150 ease-in"
+          leave-from-class="transform scale-100 opacity-100"
+          leave-to-class="transform scale-95 opacity-0"
+        >
+          <div
+            v-if="isTotalScoreDropdownOpen"
+            data-dropdown="total-score"
+            class="fixed z-[9999] w-64 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5"
+            :style="{
+              top: totalScoreDropdownPosition.top + 'px',
+              left: totalScoreDropdownPosition.left + 'px',
+            }"
+          >
+            <div class="py-1">
+              <!-- Очистить все -->
+              <div
+                @click="selectTotalScore(null)"
+                class="px-4 py-2 cursor-pointer hover:bg-gray-50 text-sm text-gray-900 transition-colors duration-150 border-b border-gray-100"
+              >
+                <div class="flex items-center justify-between">
+                  <span class="font-medium text-red-600">Очистить все</span>
+                </div>
+              </div>
+              <!-- Отдельные категории с чекбоксами -->
+              <div
+                v-for="category in ['excellent', 'good', 'poor']"
+                :key="category"
+                @click="selectTotalScore(category)"
+                class="px-4 py-2 cursor-pointer hover:bg-gray-50 text-sm text-gray-900 transition-colors duration-150"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-3">
+                    <!-- Чекбокс -->
+                    <div class="flex items-center">
+                      <input
+                        type="checkbox"
+                        :checked="selectedTotalScore.includes(category)"
+                        @click.stop
+                        class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        readonly
+                      />
+                    </div>
+                    <span
+                      :class="getTotalScoreColor(category)"
+                      class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ring-1 ring-inset"
+                    >
+                      {{ getTotalScoreText(category) }}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1442,8 +1645,12 @@ if (typeof window !== 'undefined') {
 
       <!-- Добавляем обработчик клика вне dropdown'ов для их закрытия -->
       <div
-        v-if="isResumeAnalysisDropdownOpen || isCallStatusDropdownOpen"
-        @click="((isResumeAnalysisDropdownOpen = false), (isCallStatusDropdownOpen = false))"
+        v-if="isResumeAnalysisDropdownOpen || isCallStatusDropdownOpen || isTotalScoreDropdownOpen"
+        @click="
+          ((isResumeAnalysisDropdownOpen = false),
+          (isCallStatusDropdownOpen = false),
+          (isTotalScoreDropdownOpen = false))
+        "
         class="fixed inset-0 z-[9998]"
       ></div>
 
@@ -1506,6 +1713,11 @@ if (typeof window !== 'undefined') {
     opacity: 1;
     transform: scale(1);
   }
+}
+
+table td:first-child {
+  max-width: 200px;
+  min-width: 150px;
 }
 
 .animate-fade-in {

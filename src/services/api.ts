@@ -58,6 +58,7 @@ export interface Candidate {
   comments?: string
   callDate?: string
   callLink?: string
+  totalScore?: number
 }
 
 // ===================== API Client =====================
