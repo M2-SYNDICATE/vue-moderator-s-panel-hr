@@ -28,8 +28,6 @@ const loginHandler = async () => {
       password: password.value,
     })
 
-    // Данные пользователя уже сохраняются в authService
-    // Но для совместимости сохраняем и в localStorage
     if (response.user) {
       localStorage.setItem('userEmail', response.user.email)
       localStorage.setItem('userFullName', response.user.username || response.user.email)
@@ -53,9 +51,9 @@ onMounted(() => {
 
 <template>
   <div class="min-h-screen bg-gray-50 flex flex-col relative overflow-hidden">
-    <Transition name="fade">
+    <!-- <Transition name="fade">
       <TimeComponent />
-    </Transition>
+    </Transition> -->
 
     <!-- Full-screen background image -->
     <div class="absolute inset-0 pointer-events-none">

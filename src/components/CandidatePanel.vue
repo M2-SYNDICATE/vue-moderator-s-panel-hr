@@ -117,7 +117,7 @@ const parseGroupScore = (groupScoreString: string): number[] => {
 }
 
 const getScoreCategory = (score: number): string => {
-  if (score >= 9) return 'excellent'
+  if (score >= 8) return 'excellent'
   if (score >= 6) return 'good'
   return 'poor'
 }
@@ -403,6 +403,45 @@ const formattedAIReport = computed(() => {
     return null
   }
 })
+
+// Мнение AI HR
+const getAIHROpinion = (totalScore: string | undefined, callStatus: string): string => {
+  if (callStatus !== 'completed') return 'pending'
+  if (!totalScore) return 'unknown'
+
+  const score = parseInt(totalScore)
+  return score >= 8 ? 'suitable' : 'not_suitable'
+}
+
+const getAIHROpinionText = (opinion: string): string => {
+  switch (opinion) {
+    case 'suitable':
+      return 'Подходит'
+    case 'not_suitable':
+      return 'Не подходит'
+    case 'pending':
+      return '—'
+    case 'unknown':
+      return 'Неизвестно'
+    default:
+      return 'Неизвестно'
+  }
+}
+
+const getAIHROpinionColor = (opinion: string): string => {
+  switch (opinion) {
+    case 'suitable':
+      return 'bg-green-50 text-green-700 ring-green-600/20'
+    case 'not_suitable':
+      return 'bg-red-50 text-red-700 ring-red-600/20'
+    case 'pending':
+      return 'bg-gray-50 text-gray-500 ring-gray-400/20'
+    case 'unknown':
+      return 'bg-gray-50 text-gray-700 ring-gray-600/20'
+    default:
+      return 'bg-gray-50 text-gray-700 ring-gray-600/20'
+  }
+}
 
 const isDetailedReportExpanded = ref(false)
 
@@ -1399,6 +1438,25 @@ const fallbackToDefaultFont = (doc: any) => {
                       class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset"
                     >
                       {{ getCallStatusText(candidate.callStatus) }}
+                    </span>
+                  </dd>
+                </div>
+                <div>
+                  <dt class="text-sm font-medium text-gray-500 mb-1">Мнение AI HR</dt>
+                  <dd>
+                    <span
+                      :class="
+                        getAIHROpinionColor(
+                          getAIHROpinion(candidate.totalScore, candidate.callStatus),
+                        )
+                      "
+                      class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset"
+                    >
+                      {{
+                        getAIHROpinionText(
+                          getAIHROpinion(candidate.totalScore, candidate.callStatus),
+                        )
+                      }}
                     </span>
                   </dd>
                 </div>

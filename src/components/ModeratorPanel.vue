@@ -168,7 +168,7 @@ const filteredCandidates = computed(() => {
 // Функции для общего результата собеседования
 const getTotalScoreCategory = (score: number | undefined): string => {
   if (score === undefined) return 'unknown'
-  if (score >= 9) return 'excellent'
+  if (score >= 8) return 'excellent'
   if (score >= 6) return 'good'
   return 'poor'
 }
@@ -176,9 +176,9 @@ const getTotalScoreCategory = (score: number | undefined): string => {
 const getTotalScoreText = (category: string): string => {
   switch (category) {
     case 'excellent':
-      return 'Отлично (9-10)'
+      return 'Отлично (8-10)'
     case 'good':
-      return 'Хорошо (6-8)'
+      return 'Хорошо (6-7)'
     case 'poor':
       return 'Плохо (0-5)'
     case 'unknown':
