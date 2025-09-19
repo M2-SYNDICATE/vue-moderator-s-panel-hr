@@ -1210,75 +1210,223 @@ if (typeof window !== 'undefined') {
           </div>
         </div>
 
-        <!-- Table for larger screens -->
-        <div class="hidden md:block overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-              <tr>
-                <th
-                  class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  ФИО кандидата
-                </th>
-                <!-- Анализ резюме с фильтром -->
-                <th
-                  class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  <div class="flex items-center space-x-2">
-                    <span>Анализ резюме</span>
-                    <div class="relative">
-                      <button
-                        ref="resumeAnalysisButtonRef"
-                        @click="toggleResumeAnalysisDropdown"
-                        class="p-1 hover:bg-gray-200 rounded transition-colors duration-150"
-                        :class="{ 'bg-blue-100': selectedResumeAnalysis.length > 0 }"
-                      >
-                        <svg
-                          class="h-4 w-4 text-gray-400 transition-transform duration-200"
-                          :class="{
-                            'rotate-180': isResumeAnalysisDropdownOpen,
-                            'text-blue-600': selectedResumeAnalysis.length > 0,
-                          }"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M19 9l-7 7-7-7"
-                          />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                </th>
+        <!-- Loading State -->
+        <div v-if="isLoading" class="px-6 py-16 text-center">
+          <div class="flex flex-col items-center justify-center space-y-4">
+            <!-- Spinner -->
+            <div class="relative">
+              <div class="animate-spin rounded-full h-12 w-12 border-4 border-gray-200"></div>
+              <div
+                class="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent absolute top-0 left-0"
+              ></div>
+            </div>
 
-                <th
-                  class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+            <!-- Loading text -->
+            <div class="text-center">
+              <h3 class="text-lg font-medium text-gray-900 mb-2">Загрузка данных...</h3>
+              <p class="text-sm text-gray-500">Пожалуйста, подождите</p>
+            </div>
+          </div>
+        </div>
+
+        <div v-else>
+          <!-- Table for larger screens -->
+          <div class="hidden md:block overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th
+                    class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    ФИО кандидата
+                  </th>
+                  <!-- Анализ резюме с фильтром -->
+                  <th
+                    class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    <div class="flex items-center space-x-2">
+                      <span>Анализ резюме</span>
+                      <div class="relative">
+                        <button
+                          ref="resumeAnalysisButtonRef"
+                          @click="toggleResumeAnalysisDropdown"
+                          class="p-1 hover:bg-gray-200 rounded transition-colors duration-150"
+                          :class="{ 'bg-blue-100': selectedResumeAnalysis.length > 0 }"
+                        >
+                          <svg
+                            class="h-4 w-4 text-gray-400 transition-transform duration-200"
+                            :class="{
+                              'rotate-180': isResumeAnalysisDropdownOpen,
+                              'text-blue-600': selectedResumeAnalysis.length > 0,
+                            }"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </th>
+
+                  <th
+                    class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Дата собеседования
+                  </th>
+                  <!-- Статус собеседования с фильтром -->
+                  <th
+                    class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    <div class="flex items-center space-x-2">
+                      <span>Статус собеседования</span>
+                      <div class="relative">
+                        <button
+                          ref="callStatusButtonRef"
+                          @click="toggleCallStatusDropdown"
+                          class="p-1 hover:bg-gray-200 rounded transition-colors duration-150"
+                          :class="{ 'bg-blue-100': selectedCallStatus.length > 0 }"
+                        >
+                          <svg
+                            class="h-4 w-4 text-gray-400 transition-transform duration-200"
+                            :class="{
+                              'rotate-180': isCallStatusDropdownOpen,
+                              'text-blue-600': selectedCallStatus.length > 0,
+                            }"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </th>
+                  <th
+                    class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    <div class="flex items-center space-x-2">
+                      <span>Общий результат</span>
+                      <div class="relative">
+                        <button
+                          ref="totalScoreButtonRef"
+                          @click="toggleTotalScoreDropdown"
+                          class="p-1 hover:bg-gray-200 rounded transition-colors duration-150"
+                          :class="{ 'bg-blue-100': selectedTotalScore.length > 0 }"
+                        >
+                          <svg
+                            class="h-4 w-4 text-gray-400 transition-transform duration-200"
+                            :class="{
+                              'rotate-180': isTotalScoreDropdownOpen,
+                              'text-blue-600': selectedTotalScore.length > 0,
+                            }"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </th>
+                  <th
+                    class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
+                    Действия
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr
+                  v-for="candidate in paginatedCandidates"
+                  :key="candidate.id"
+                  @click="openCandidate(candidate.id)"
+                  class="hover:bg-gray-50 transition-colors duration-150 cursor-pointer animate-table-row"
                 >
-                  Дата собеседования
-                </th>
-                <!-- Статус собеседования с фильтром -->
-                <th
-                  class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  <div class="flex items-center space-x-2">
-                    <span>Статус собеседования</span>
-                    <div class="relative">
+                  <td class="px-6 py-4">
+                    <div class="text-sm font-medium text-gray-900 break-words">
+                      {{ candidate.fullName }}
+                    </div>
+                    <div class="text-xs text-gray-400 mt-1">
+                      {{ getVacancyTitle(candidate.vacancyId) }}
+                    </div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span
+                      :class="getResumeAnalysisColor(candidate.resumeAnalysis)"
+                      class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset"
+                    >
+                      {{ getResumeAnalysisText(candidate.resumeAnalysis) }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div
+                      v-if="!shouldShowDash(candidate) && candidate.callDate"
+                      class="text-sm text-gray-900"
+                    >
+                      {{ formatDateTime(candidate.callDate) }}
+                    </div>
+                    <div v-else-if="!shouldShowDash(candidate)" class="text-sm text-gray-400">
+                      Не назначена
+                    </div>
+                    <div v-else class="text-sm text-gray-400">—</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <span
+                      v-if="!shouldShowDash(candidate)"
+                      :class="getCallStatusColor(candidate.callStatus)"
+                      class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset"
+                    >
+                      {{ getCallStatusText(candidate.callStatus) }}
+                    </span>
+                    <span v-else class="text-sm text-gray-400">—</span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div v-if="shouldShowTotalScore(candidate)" class="flex items-center space-x-2">
+                      <span
+                        :class="getTotalScoreColor(getTotalScoreCategory(candidate.totalScore))"
+                        class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset"
+                      >
+                        {{ candidate.totalScore }}/10
+                      </span>
+                    </div>
+                    <div v-else class="text-sm text-gray-400">—</div>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center space-x-3">
+                      <!-- Copy Call Link Button -->
                       <button
-                        ref="callStatusButtonRef"
-                        @click="toggleCallStatusDropdown"
-                        class="p-1 hover:bg-gray-200 rounded transition-colors duration-150"
-                        :class="{ 'bg-blue-100': selectedCallStatus.length > 0 }"
+                        v-if="candidate.callLink && !shouldShowDash(candidate)"
+                        @click.stop="copyCallLink(candidate)"
+                        :disabled="isLoading"
+                        class="group inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm transition-all duration-150 disabled:opacity-50"
+                        :title="
+                          copiedLinks.has(candidate.id)
+                            ? 'Ссылка скопирована!'
+                            : 'Скопировать ссылку на собеседование'
+                        "
                       >
                         <svg
-                          class="h-4 w-4 text-gray-400 transition-transform duration-200"
-                          :class="{
-                            'rotate-180': isCallStatusDropdownOpen,
-                            'text-blue-600': selectedCallStatus.length > 0,
-                          }"
+                          v-if="!copiedLinks.has(candidate.id)"
+                          class="h-4 w-4 mr-1 group-hover:scale-110 transition-transform duration-150"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -1287,31 +1435,12 @@ if (typeof window !== 'undefined') {
                             stroke-linecap="round"
                             stroke-linejoin="round"
                             stroke-width="2"
-                            d="M19 9l-7 7-7-7"
+                            d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
                           />
                         </svg>
-                      </button>
-                    </div>
-                  </div>
-                </th>
-                <th
-                  class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  <div class="flex items-center space-x-2">
-                    <span>Общий результат</span>
-                    <div class="relative">
-                      <button
-                        ref="totalScoreButtonRef"
-                        @click="toggleTotalScoreDropdown"
-                        class="p-1 hover:bg-gray-200 rounded transition-colors duration-150"
-                        :class="{ 'bg-blue-100': selectedTotalScore.length > 0 }"
-                      >
                         <svg
-                          class="h-4 w-4 text-gray-400 transition-transform duration-200"
-                          :class="{
-                            'rotate-180': isTotalScoreDropdownOpen,
-                            'text-blue-600': selectedTotalScore.length > 0,
-                          }"
+                          v-else
+                          class="h-4 w-4 mr-1 text-green-600"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -1320,261 +1449,153 @@ if (typeof window !== 'undefined') {
                             stroke-linecap="round"
                             stroke-linejoin="round"
                             stroke-width="2"
-                            d="M19 9l-7 7-7-7"
+                            d="M5 13l4 4L19 7"
                           />
                         </svg>
+                        <span :class="{ 'text-green-600': copiedLinks.has(candidate.id) }">
+                          {{ copiedLinks.has(candidate.id) ? 'Скопировано' : 'Собеседование' }}
+                        </span>
+                      </button>
+
+                      <!-- Delete Button -->
+                      <button
+                        @click.stop="removeCandidate(candidate.id)"
+                        :disabled="isLoading"
+                        class="text-red-600 hover:text-red-800 font-medium text-sm transition-colors duration-150 disabled:opacity-50"
+                      >
+                        Удалить
                       </button>
                     </div>
-                  </div>
-                </th>
-                <th
-                  class="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Действия
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-              <tr
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Card layout for mobile screens -->
+          <div class="md:hidden">
+            <div class="divide-y divide-gray-200">
+              <div
                 v-for="candidate in paginatedCandidates"
                 :key="candidate.id"
                 @click="openCandidate(candidate.id)"
-                class="hover:bg-gray-50 transition-colors duration-150 cursor-pointer animate-table-row"
+                class="p-6 hover:bg-gray-50 transition-colors duration-150 cursor-pointer animate-card"
               >
-                <td class="px-6 py-4">
-                  <div class="text-sm font-medium text-gray-900 break-words">
-                    {{ candidate.fullName }}
+                <div class="flex items-start justify-between mb-3">
+                  <div class="flex-1 min-w-0 mr-3">
+                    <h3
+                      class="text-sm font-medium text-gray-900 truncate"
+                      :title="candidate.fullName"
+                    >
+                      {{ candidate.fullName }}
+                    </h3>
+                    <p
+                      class="text-xs text-gray-500 mt-1 truncate"
+                      :title="getVacancyTitle(candidate.vacancyId)"
+                    >
+                      {{ getVacancyTitle(candidate.vacancyId) }}
+                    </p>
                   </div>
-                  <div class="text-xs text-gray-400 mt-1">
-                    {{ getVacancyTitle(candidate.vacancyId) }}
-                  </div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
                   <span
                     :class="getResumeAnalysisColor(candidate.resumeAnalysis)"
-                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset"
+                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset flex-shrink-0"
                   >
                     {{ getResumeAnalysisText(candidate.resumeAnalysis) }}
                   </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div
-                    v-if="!shouldShowDash(candidate) && candidate.callDate"
-                    class="text-sm text-gray-900"
-                  >
-                    {{ formatDateTime(candidate.callDate) }}
-                  </div>
-                  <div v-else-if="!shouldShowDash(candidate)" class="text-sm text-gray-400">
-                    Не назначена
-                  </div>
-                  <div v-else class="text-sm text-gray-400">—</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <span
-                    v-if="!shouldShowDash(candidate)"
-                    :class="getCallStatusColor(candidate.callStatus)"
-                    class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset"
-                  >
-                    {{ getCallStatusText(candidate.callStatus) }}
-                  </span>
-                  <span v-else class="text-sm text-gray-400">—</span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div v-if="shouldShowTotalScore(candidate)" class="flex items-center space-x-2">
+                </div>
+                <div class="space-y-2 mb-4">
+                  <p class="text-sm text-gray-600">
+                    <span class="font-medium">Собеседование:</span>
+                    <span v-if="!shouldShowDash(candidate) && candidate.callDate">
+                      {{ formatDateTime(candidate.callDate) }}
+                    </span>
+                    <span v-else-if="!shouldShowDash(candidate)" class="text-gray-400">
+                      Не назначен
+                    </span>
+                    <span v-else class="text-gray-400">—</span>
+                  </p>
+                  <p class="text-sm text-gray-600">
+                    <span class="font-medium">Статус:</span>
+                    <span
+                      v-if="!shouldShowDash(candidate)"
+                      :class="getCallStatusColor(candidate.callStatus)"
+                      class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ring-1 ring-inset ml-2"
+                    >
+                      {{ getCallStatusText(candidate.callStatus) }}
+                    </span>
+                    <span v-else class="text-gray-400 ml-2">—</span>
+                  </p>
+                  <p v-if="shouldShowTotalScore(candidate)" class="text-sm text-gray-600">
+                    <span class="font-medium">Результат:</span>
                     <span
                       :class="getTotalScoreColor(getTotalScoreCategory(candidate.totalScore))"
-                      class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset"
+                      class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ring-1 ring-inset ml-2"
                     >
                       {{ candidate.totalScore }}/10
                     </span>
-                  </div>
-                  <div v-else class="text-sm text-gray-400">—</div>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                  <div class="flex items-center space-x-3">
-                    <!-- Copy Call Link Button -->
-                    <button
-                      v-if="candidate.callLink && !shouldShowDash(candidate)"
-                      @click.stop="copyCallLink(candidate)"
-                      :disabled="isLoading"
-                      class="group inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm transition-all duration-150 disabled:opacity-50"
-                      :title="
-                        copiedLinks.has(candidate.id)
-                          ? 'Ссылка скопирована!'
-                          : 'Скопировать ссылку на собеседование'
-                      "
-                    >
-                      <svg
-                        v-if="!copiedLinks.has(candidate.id)"
-                        class="h-4 w-4 mr-1 group-hover:scale-110 transition-transform duration-150"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                        />
-                      </svg>
-                      <svg
-                        v-else
-                        class="h-4 w-4 mr-1 text-green-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      <span :class="{ 'text-green-600': copiedLinks.has(candidate.id) }">
-                        {{ copiedLinks.has(candidate.id) ? 'Скопировано' : 'Собеседование' }}
-                      </span>
-                    </button>
-
-                    <!-- Delete Button -->
-                    <button
-                      @click.stop="removeCandidate(candidate.id)"
-                      :disabled="isLoading"
-                      class="text-red-600 hover:text-red-800 font-medium text-sm transition-colors duration-150 disabled:opacity-50"
-                    >
-                      Удалить
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Card layout for mobile screens -->
-        <div class="md:hidden">
-          <div class="divide-y divide-gray-200">
-            <div
-              v-for="candidate in paginatedCandidates"
-              :key="candidate.id"
-              @click="openCandidate(candidate.id)"
-              class="p-6 hover:bg-gray-50 transition-colors duration-150 cursor-pointer animate-card"
-            >
-              <div class="flex items-start justify-between mb-3">
-                <div class="flex-1 min-w-0 mr-3">
-                  <h3
-                    class="text-sm font-medium text-gray-900 truncate"
-                    :title="candidate.fullName"
-                  >
-                    {{ candidate.fullName }}
-                  </h3>
-                  <p
-                    class="text-xs text-gray-500 mt-1 truncate"
-                    :title="getVacancyTitle(candidate.vacancyId)"
-                  >
-                    {{ getVacancyTitle(candidate.vacancyId) }}
                   </p>
                 </div>
-                <span
-                  :class="getResumeAnalysisColor(candidate.resumeAnalysis)"
-                  class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset flex-shrink-0"
-                >
-                  {{ getResumeAnalysisText(candidate.resumeAnalysis) }}
-                </span>
-              </div>
-              <div class="space-y-2 mb-4">
-                <p class="text-sm text-gray-600">
-                  <span class="font-medium">Собеседование:</span>
-                  <span v-if="!shouldShowDash(candidate) && candidate.callDate">
-                    {{ formatDateTime(candidate.callDate) }}
-                  </span>
-                  <span v-else-if="!shouldShowDash(candidate)" class="text-gray-400">
-                    Не назначен
-                  </span>
-                  <span v-else class="text-gray-400">—</span>
-                </p>
-                <p class="text-sm text-gray-600">
-                  <span class="font-medium">Статус:</span>
-                  <span
-                    v-if="!shouldShowDash(candidate)"
-                    :class="getCallStatusColor(candidate.callStatus)"
-                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ring-1 ring-inset ml-2"
+                <div class="flex items-center space-x-4">
+                  <!-- Copy Call Link Button -->
+                  <button
+                    v-if="candidate.callLink && !shouldShowDash(candidate)"
+                    @click.stop="copyCallLink(candidate)"
+                    :disabled="isLoading"
+                    class="group inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm transition-all duration-150 disabled:opacity-50"
                   >
-                    {{ getCallStatusText(candidate.callStatus) }}
-                  </span>
-                  <span v-else class="text-gray-400 ml-2">—</span>
-                </p>
-                <p v-if="shouldShowTotalScore(candidate)" class="text-sm text-gray-600">
-                  <span class="font-medium">Результат:</span>
-                  <span
-                    :class="getTotalScoreColor(getTotalScoreCategory(candidate.totalScore))"
-                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ring-1 ring-inset ml-2"
-                  >
-                    {{ candidate.totalScore }}/10
-                  </span>
-                </p>
-              </div>
-              <div class="flex items-center space-x-4">
-                <!-- Copy Call Link Button -->
-                <button
-                  v-if="candidate.callLink && !shouldShowDash(candidate)"
-                  @click.stop="copyCallLink(candidate)"
-                  :disabled="isLoading"
-                  class="group inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm transition-all duration-150 disabled:opacity-50"
-                >
-                  <svg
-                    v-if="!copiedLinks.has(candidate.id)"
-                    class="h-4 w-4 mr-1 group-hover:scale-110 transition-transform duration-150"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <svg
-                    v-else
-                    class="h-4 w-4 mr-1 text-green-600"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  <span :class="{ 'text-green-600': copiedLinks.has(candidate.id) }">
-                    {{
-                      copiedLinks.has(candidate.id)
-                        ? 'Скопировано'
-                        : 'Скопировать ссылку на собеседования'
-                    }}
-                  </span>
-                </button>
+                    <svg
+                      v-if="!copiedLinks.has(candidate.id)"
+                      class="h-4 w-4 mr-1 group-hover:scale-110 transition-transform duration-150"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                      />
+                    </svg>
+                    <svg
+                      v-else
+                      class="h-4 w-4 mr-1 text-green-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    <span :class="{ 'text-green-600': copiedLinks.has(candidate.id) }">
+                      {{
+                        copiedLinks.has(candidate.id)
+                          ? 'Скопировано'
+                          : 'Скопировать ссылку на собеседования'
+                      }}
+                    </span>
+                  </button>
 
-                <!-- Delete Button -->
-                <button
-                  @click.stop="removeCandidate(candidate.id)"
-                  :disabled="isLoading"
-                  class="text-red-600 hover:text-red-800 font-medium text-sm transition-colors duration-150 disabled:opacity-50"
-                >
-                  Удалить
-                </button>
+                  <!-- Delete Button -->
+                  <button
+                    @click.stop="removeCandidate(candidate.id)"
+                    :disabled="isLoading"
+                    class="text-red-600 hover:text-red-800 font-medium text-sm transition-colors duration-150 disabled:opacity-50"
+                  >
+                    Удалить
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Empty State for Candidates -->
-        <div v-if="filteredCandidates.length === 0" class="px-6 py-16 text-center">
+        <div v-if="!isLoading && filteredCandidates.length === 0" class="px-6 py-16 text-center">
           <svg
             class="mx-auto h-16 w-16 text-gray-400 mb-4"
             fill="none"
@@ -1671,7 +1692,10 @@ if (typeof window !== 'undefined') {
         </div>
 
         <!-- Pagination -->
-        <div v-if="totalPages > 1" class="px-6 py-4 border-t border-gray-200 bg-gray-50">
+        <div
+          v-if="!isLoading && totalPages > 1"
+          class="px-6 py-4 border-t border-gray-200 bg-gray-50"
+        >
           <div class="flex items-center justify-between">
             <div class="text-sm text-gray-700">
               Показано {{ (currentPage - 1) * itemsPerPage + 1 }}-{{
@@ -1685,7 +1709,7 @@ if (typeof window !== 'undefined') {
               <button
                 @click="goToPage(currentPage - 1)"
                 :disabled="currentPage === 1"
-                class="```vue:src/components/ModeratorPanel.vue relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white rounded-lg hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                class="relative inline-flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white rounded-lg hover:bg-gray-50 hover:text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
               >
                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -1788,7 +1812,7 @@ if (typeof window !== 'undefined') {
                       <input
                         type="checkbox"
                         :checked="selectedResumeAnalysis.includes(status)"
-                        @click.stop
+                        @click.stop="selectResumeAnalysis(status)"
                         class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         readonly
                       />
@@ -1850,7 +1874,7 @@ if (typeof window !== 'undefined') {
                       <input
                         type="checkbox"
                         :checked="selectedCallStatus.includes(status)"
-                        @click.stop
+                        @click.stop="selectCallStatus(status)"
                         class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         readonly
                       />
@@ -1911,7 +1935,7 @@ if (typeof window !== 'undefined') {
                       <input
                         type="checkbox"
                         :checked="selectedTotalScore.includes(category)"
-                        @click.stop
+                        @click.stop="selectTotalScore(category)"
                         class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         readonly
                       />
@@ -1930,7 +1954,6 @@ if (typeof window !== 'undefined') {
         </Transition>
       </Teleport>
 
-      <!-- Добавляем обработчик клика вне dropdown'ов для их закрытия -->
       <div
         v-if="isResumeAnalysisDropdownOpen || isCallStatusDropdownOpen || isTotalScoreDropdownOpen"
         @click="
