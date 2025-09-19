@@ -1419,9 +1419,7 @@ if (typeof window !== 'undefined') {
                         :disabled="isLoading"
                         class="group inline-flex items-center text-blue-600 hover:text-blue-800 font-medium text-sm transition-all duration-150 disabled:opacity-50"
                         :title="
-                          copiedLinks.has(candidate.id)
-                            ? 'Ссылка скопирована!'
-                            : 'Скопировать ссылку на собеседование'
+                          copiedLinks.has(candidate.id) ? 'Ссылка скопирована!' : 'Собеседование'
                         "
                       >
                         <svg
@@ -1572,11 +1570,7 @@ if (typeof window !== 'undefined') {
                       />
                     </svg>
                     <span :class="{ 'text-green-600': copiedLinks.has(candidate.id) }">
-                      {{
-                        copiedLinks.has(candidate.id)
-                          ? 'Скопировано'
-                          : 'Скопировать ссылку на собеседования'
-                      }}
+                      {{ copiedLinks.has(candidate.id) ? 'Скопировано' : 'Собеседование' }}
                     </span>
                   </button>
 
