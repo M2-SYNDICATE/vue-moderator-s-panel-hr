@@ -88,7 +88,7 @@ const validateFile = (file: File): string | null => {
 
 // === Добавление файлов ===
 const addFiles = (files: FileList | null | undefined) => {
-  if (!files || files.length === 0) return
+  if (!files || files.length === 0 || isUploading.value) return // Блокируем во время загрузки
 
   const errors: string[] = []
   const validFiles: File[] = []
@@ -112,7 +112,9 @@ const addFiles = (files: FileList | null | undefined) => {
 // === Drag & Drop ===
 const handleDragOver = (e: DragEvent) => {
   e.preventDefault()
-  isDragOver.value = true
+  if (!isUploading.value) {
+    isDragOver.value = true
+  }
 }
 
 const handleDragLeave = (e: DragEvent) => {
@@ -123,11 +125,15 @@ const handleDragLeave = (e: DragEvent) => {
 const handleDrop = (e: DragEvent) => {
   e.preventDefault()
   isDragOver.value = false
-  addFiles(e.dataTransfer?.files)
+  if (!isUploading.value) {
+    addFiles(e.dataTransfer?.files)
+  }
 }
 
 // === Input file ===
 const handleFileSelect = (e: Event) => {
+  if (isUploading.value) return // Блокируем во время загрузки
+
   const target = e.target as HTMLInputElement
   addFiles(target.files)
   // Сбрасываем значение, чтобы можно было выбрать те же файлы снова
@@ -138,11 +144,14 @@ const handleFileSelect = (e: Event) => {
 
 // === Удаление файла ===
 const removeFile = (index: number) => {
+  if (isUploading.value) return // Блокируем во время загрузки
   form.files.splice(index, 1)
 }
 
 // === Выбор вакансии ===
 const toggleVacancyDropdown = () => {
+  if (isUploading.value) return // Блокируем во время загрузки
+
   isVacancyDropdownOpen.value = !isVacancyDropdownOpen.value
   if (!isVacancyDropdownOpen.value) {
     vacancySearchQuery.value = ''
@@ -150,6 +159,8 @@ const toggleVacancyDropdown = () => {
 }
 
 const selectVacancy = (id: number) => {
+  if (isUploading.value) return // Блокируем во время загрузки
+
   form.vacancyId = id
   isVacancyDropdownOpen.value = false
   vacancySearchQuery.value = ''
@@ -199,6 +210,8 @@ const resetForm = () => {
 
 // === Закрытие модалки ===
 const closeModal = () => {
+  if (isUploading.value) return // Блокируем закрытие во время загрузки
+
   resetForm()
   emit('close')
 }
@@ -251,11 +264,28 @@ watch(
               class="relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all"
               @click.stop
             >
+              <!-- Loading Overlay -->
+              <div
+                v-if="isUploading"
+                class="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl"
+              >
+                <div class="flex flex-col items-center space-y-3">
+                  <div class="relative">
+                    <div class="animate-spin rounded-full h-8 w-8 border-2 border-gray-200"></div>
+                    <div
+                      class="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent absolute top-0 left-0"
+                    ></div>
+                  </div>
+                  <p class="text-sm font-medium text-gray-700">Добавление кандидатов...</p>
+                </div>
+              </div>
+
               <!-- Header -->
               <div class="px-6 pt-6 pb-4">
                 <div class="flex items-center justify-between">
                   <h3 class="text-xl font-semibold text-gray-900">Добавить кандидатов</h3>
                   <button
+                    v-if="!isUploading"
                     @click="closeModal"
                     class="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                   >
@@ -281,8 +311,12 @@ watch(
                     <button
                       type="button"
                       @click="toggleVacancyDropdown"
-                      class="relative w-full bg-white border border-gray-300 rounded-xl shadow-sm pl-4 pr-10 py-3 text-left focus:outline-none focus:ring-2 focus:ring-blue-600 hover:border-gray-400 transition-all"
-                      :class="{ 'ring-2 ring-blue-600 border-transparent': isVacancyDropdownOpen }"
+                      :disabled="isUploading"
+                      :class="[
+                        'relative w-full bg-white border border-gray-300 rounded-xl shadow-sm pl-4 pr-10 py-3 text-left focus:outline-none focus:ring-2 focus:ring-blue-600 hover:border-gray-400 transition-all',
+                        { 'ring-2 ring-blue-600 border-transparent': isVacancyDropdownOpen },
+                        isUploading ? 'opacity-50 cursor-not-allowed' : '',
+                      ]"
                     >
                       <span class="block truncate" :class="{ 'text-gray-500': !form.vacancyId }">
                         {{ selectedVacancyTitle }}
@@ -317,7 +351,7 @@ watch(
                       leave-to-class="transform scale-95 opacity-0"
                     >
                       <div
-                        v-if="isVacancyDropdownOpen"
+                        v-if="isVacancyDropdownOpen && !isUploading"
                         class="absolute z-50 w-full mt-2 bg-white rounded-xl shadow-lg ring-1 ring-black ring-opacity-5 max-h-64 overflow-hidden"
                       >
                         <!-- Search -->
@@ -417,9 +451,11 @@ watch(
                     :class="[
                       'relative rounded-xl border-2 border-dashed transition-all duration-200',
                       form.files.length > 0 ? 'p-4' : 'p-6',
-                      isDragOver
-                        ? 'border-blue-400 bg-blue-50'
-                        : 'border-gray-300 hover:border-gray-400',
+                      isUploading
+                        ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                        : isDragOver
+                          ? 'border-blue-400 bg-blue-50'
+                          : 'border-gray-300 hover:border-gray-400',
                     ]"
                   >
                     <div class="text-center">
@@ -454,7 +490,8 @@ watch(
                           <button
                             type="button"
                             @click="fileInputRef?.click()"
-                            class="font-medium text-blue-600 hover:text-blue-500"
+                            :disabled="isUploading"
+                            class="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-150 disabled:text-gray-400 disabled:cursor-not-allowed"
                           >
                             {{ form.files.length > 0 ? '' : 'выберите' }}
                           </button>
@@ -498,7 +535,8 @@ watch(
                       <button
                         type="button"
                         @click="removeFile(index)"
-                        class="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-full transition flex-shrink-0 ml-2"
+                        :disabled="isUploading"
+                        class="text-red-400 hover:text-red-600 hover:bg-red-50 p-1.5 rounded-full transition flex-shrink-0 ml-2 disabled:text-gray-300 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                       >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
@@ -518,6 +556,7 @@ watch(
                     accept=".pdf,.doc,.docx"
                     multiple
                     @change="handleFileSelect"
+                    :disabled="isUploading"
                     class="hidden"
                   />
                 </div>
@@ -525,6 +564,7 @@ watch(
                 <!-- Actions -->
                 <div class="flex justify-end space-x-3 pt-4">
                   <button
+                    v-if="!isUploading"
                     type="button"
                     @click="closeModal"
                     class="px-6 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-600 transition"
@@ -534,13 +574,19 @@ watch(
                   <button
                     type="submit"
                     :disabled="!canSubmit"
-                    class="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-sm hover:shadow transition disabled:opacity-70 disabled:cursor-not-allowed"
+                    class="px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-sm hover:shadow transition disabled:opacity-70 disabled:cursor-not-allowed flex items-center space-x-2"
                   >
-                    {{
-                      isUploading
-                        ? 'Загрузка...'
-                        : `Добавить ${form.files.length} кандидат${form.files.length === 1 ? 'а' : form.files.length < 5 ? 'ов' : 'ов'}`
-                    }}
+                    <div v-if="isUploading" class="flex items-center space-x-2">
+                      <div
+                        class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"
+                      ></div>
+                      <span>Загрузка...</span>
+                    </div>
+                    <span v-else>
+                      Добавить {{ form.files.length }} кандидат{{
+                        form.files.length === 1 ? 'а' : form.files.length < 5 ? 'ов' : 'ов'
+                      }}
+                    </span>
                   </button>
                 </div>
               </form>

@@ -20,6 +20,7 @@ const form = reactive({
 const isDragOver = ref(false)
 const fileInputRef = ref<HTMLInputElement>()
 const isVisible = ref(false)
+const isLoading = ref(false) // Добавляем состояние загрузки
 
 // Watch for modal open/close to handle animations
 watch(
@@ -38,7 +39,9 @@ watch(
 
 const handleDragOver = (e: DragEvent) => {
   e.preventDefault()
-  isDragOver.value = true
+  if (!isLoading.value) {
+    isDragOver.value = true
+  }
 }
 
 const handleDragLeave = (e: DragEvent) => {
@@ -50,6 +53,8 @@ const handleDrop = (e: DragEvent) => {
   e.preventDefault()
   isDragOver.value = false
 
+  if (isLoading.value) return // Блокируем во время загрузки
+
   const files = e.dataTransfer?.files
   if (files && files.length > 0) {
     form.descriptionFile = files[0]
@@ -57,6 +62,8 @@ const handleDrop = (e: DragEvent) => {
 }
 
 const handleFileSelect = (e: Event) => {
+  if (isLoading.value) return // Блокируем во время загрузки
+
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
     form.descriptionFile = target.files[0]
@@ -64,6 +71,8 @@ const handleFileSelect = (e: Event) => {
 }
 
 const removeFile = () => {
+  if (isLoading.value) return // Блокируем во время загрузки
+
   form.descriptionFile = null
   if (fileInputRef.value) {
     fileInputRef.value.value = ''
@@ -71,10 +80,14 @@ const removeFile = () => {
 }
 
 const submitForm = async () => {
-  if (!form.descriptionFile) {
-    alert('Пожалуйста, прикрепите файл')
+  if (!form.descriptionFile || isLoading.value) {
+    if (!form.descriptionFile) {
+      alert('Пожалуйста, прикрепите файл')
+    }
     return
   }
+
+  isLoading.value = true // Начинаем загрузку
 
   try {
     // Используем axios через наш сервис
@@ -92,6 +105,8 @@ const submitForm = async () => {
       : err.message || 'Не удалось загрузить вакансию'
 
     alert(errorMessage)
+  } finally {
+    isLoading.value = false // Завершаем загрузку
   }
 }
 
@@ -105,6 +120,8 @@ const resetForm = () => {
 }
 
 const closeModal = () => {
+  if (isLoading.value) return // Блокируем закрытие во время загрузки
+
   resetForm()
   emit('close')
 }
@@ -142,11 +159,28 @@ const closeModal = () => {
               class="relative w-full max-w-md transform overflow-hidden rounded-2xl bg-white shadow-2xl transition-all"
               @click.stop
             >
+              <!-- Loading Overlay -->
+              <div
+                v-if="isLoading"
+                class="absolute inset-0 bg-white/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl"
+              >
+                <div class="flex flex-col items-center space-y-3">
+                  <div class="relative">
+                    <div class="animate-spin rounded-full h-8 w-8 border-2 border-gray-200"></div>
+                    <div
+                      class="animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent absolute top-0 left-0"
+                    ></div>
+                  </div>
+                  <p class="text-sm font-medium text-gray-700">Создание вакансии...</p>
+                </div>
+              </div>
+
               <!-- Header -->
               <div class="relative px-6 pt-6 pb-4">
                 <div class="flex items-center justify-between">
                   <h3 class="text-xl font-semibold text-gray-900">Создать вакансию</h3>
                   <button
+                    v-if="!isLoading"
                     @click="closeModal"
                     class="rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                   >
@@ -176,9 +210,11 @@ const closeModal = () => {
                     @drop="handleDrop"
                     :class="[
                       'relative rounded-xl border-2 border-dashed p-6 text-center transition-all duration-200',
-                      isDragOver
-                        ? 'border-blue-400 bg-blue-50 scale-[1.02]'
-                        : 'border-gray-300 hover:border-gray-400',
+                      isLoading
+                        ? 'border-gray-200 bg-gray-50 cursor-not-allowed'
+                        : isDragOver
+                          ? 'border-blue-400 bg-blue-50 scale-[1.02]'
+                          : 'border-gray-300 hover:border-gray-400',
                     ]"
                   >
                     <div v-if="!form.descriptionFile" class="space-y-3">
@@ -203,7 +239,8 @@ const closeModal = () => {
                           <button
                             type="button"
                             @click="fileInputRef?.click()"
-                            class="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-150"
+                            :disabled="isLoading"
+                            class="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-150 disabled:text-gray-400 disabled:cursor-not-allowed"
                           >
                             выберите файл
                           </button>
@@ -241,7 +278,8 @@ const closeModal = () => {
                       <button
                         type="button"
                         @click="removeFile"
-                        class="flex-shrink-0 rounded-full p-1 text-red-400 hover:text-red-600 hover:bg-red-50 transition-all duration-150"
+                        :disabled="isLoading"
+                        class="flex-shrink-0 rounded-full p-1 text-red-400 hover:text-red-600 hover:bg-red-50 transition-all duration-150 disabled:text-gray-300 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                       >
                         <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
@@ -260,6 +298,7 @@ const closeModal = () => {
                     type="file"
                     accept=".pdf,.doc,.docx"
                     @change="handleFileSelect"
+                    :disabled="isLoading"
                     class="hidden"
                   />
                 </div>
@@ -267,6 +306,7 @@ const closeModal = () => {
                 <!-- Actions -->
                 <div class="flex justify-end space-x-3 pt-4">
                   <button
+                    v-if="!isLoading"
                     type="button"
                     @click="closeModal"
                     class="rounded-xl px-6 py-2.5 text-sm font-medium text-gray-700 bg-white ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 transition-all duration-200"
@@ -275,9 +315,16 @@ const closeModal = () => {
                   </button>
                   <button
                     type="submit"
-                    class="rounded-xl px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 shadow-sm hover:shadow-md transition-all duration-200"
+                    :disabled="isLoading || !form.descriptionFile"
+                    class="rounded-xl px-6 py-2.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 shadow-sm hover:shadow-md transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-blue-600 disabled:hover:shadow-sm flex items-center space-x-2"
                   >
-                    Создать вакансию
+                    <div v-if="isLoading" class="flex items-center space-x-2">
+                      <div
+                        class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"
+                      ></div>
+                      <span>Создание...</span>
+                    </div>
+                    <span v-else>Создать вакансию</span>
                   </button>
                 </div>
               </form>
