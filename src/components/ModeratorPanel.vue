@@ -63,6 +63,12 @@ const resumeAnalysisButtonRef = ref<HTMLElement | null>(null)
 const callStatusButtonRef = ref<HTMLElement | null>(null)
 const totalScoreButtonRef = ref<HTMLElement | null>(null)
 
+const mobileResumeAnalysisButtonRef = ref<HTMLElement | null>(null)
+const mobileCallStatusButtonRef = ref<HTMLElement | null>(null)
+const mobileTotalScoreButtonRef = ref<HTMLElement | null>(null)
+
+const isMobileFiltersExpanded = ref(false)
+
 const resumeAnalysisDropdownPosition = ref({ top: 0, left: 0, openUpward: false })
 const callStatusDropdownPosition = ref({ top: 0, left: 0, openUpward: false })
 const totalScoreDropdownPosition = ref({ top: 0, left: 0, openUpward: false })
@@ -208,25 +214,28 @@ const shouldShowTotalScore = (candidate: Candidate): boolean => {
 }
 
 const toggleTotalScoreDropdown = () => {
-  if (!isTotalScoreDropdownOpen.value && totalScoreButtonRef.value) {
-    const rect = totalScoreButtonRef.value.getBoundingClientRect()
-    const viewportHeight = window.innerHeight
-    const dropdownHeight = 300 // Примерная высота dropdown'а
+  if (!isTotalScoreDropdownOpen.value) {
+    // Определяем, какая кнопка была нажата (desktop или mobile)
+    const buttonRef = totalScoreButtonRef.value || mobileTotalScoreButtonRef.value
+    if (buttonRef) {
+      const rect = buttonRef.getBoundingClientRect()
+      const viewportHeight = window.innerHeight
+      const dropdownHeight = 300
 
-    // Определяем, открывать ли вверх или вниз
-    const spaceBelow = viewportHeight - rect.bottom
-    const spaceAbove = rect.top
-    const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
+      // Определяем, открывать ли вверх или вниз
+      const spaceBelow = viewportHeight - rect.bottom
+      const spaceAbove = rect.top
+      const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
 
-    totalScoreDropdownPosition.value = {
-      top: openUpward ? rect.top - dropdownHeight : rect.bottom + 4,
-      left: Math.max(8, Math.min(rect.right - 256, window.innerWidth - 264)),
-      openUpward,
+      totalScoreDropdownPosition.value = {
+        top: openUpward ? rect.top - dropdownHeight : rect.bottom + 4,
+        left: Math.max(8, Math.min(rect.right - 256, window.innerWidth - 264)),
+        openUpward,
+      }
     }
   }
   isTotalScoreDropdownOpen.value = !isTotalScoreDropdownOpen.value
 }
-
 const selectTotalScore = (category: string | null) => {
   if (category === null) {
     selectedTotalScore.value = []
@@ -242,40 +251,48 @@ const selectTotalScore = (category: string | null) => {
 }
 
 const toggleResumeAnalysisDropdown = () => {
-  if (!isResumeAnalysisDropdownOpen.value && resumeAnalysisButtonRef.value) {
-    const rect = resumeAnalysisButtonRef.value.getBoundingClientRect()
-    const viewportHeight = window.innerHeight
-    const dropdownHeight = 300
+  if (!isResumeAnalysisDropdownOpen.value) {
+    // Определяем, какая кнопка была нажата (desktop или mobile)
+    const buttonRef = resumeAnalysisButtonRef.value || mobileResumeAnalysisButtonRef.value
+    if (buttonRef) {
+      const rect = buttonRef.getBoundingClientRect()
+      const viewportHeight = window.innerHeight
+      const dropdownHeight = 300
 
-    // Определяем, открывать ли вверх или вниз
-    const spaceBelow = viewportHeight - rect.bottom
-    const spaceAbove = rect.top
-    const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
+      // Определяем, открывать ли вверх или вниз
+      const spaceBelow = viewportHeight - rect.bottom
+      const spaceAbove = rect.top
+      const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
 
-    resumeAnalysisDropdownPosition.value = {
-      top: openUpward ? rect.top - dropdownHeight : rect.bottom + 4,
-      left: Math.max(8, Math.min(rect.right - 256, window.innerWidth - 264)),
-      openUpward,
+      resumeAnalysisDropdownPosition.value = {
+        top: openUpward ? rect.top - dropdownHeight : rect.bottom + 4,
+        left: Math.max(8, Math.min(rect.right - 256, window.innerWidth - 264)),
+        openUpward,
+      }
     }
   }
   isResumeAnalysisDropdownOpen.value = !isResumeAnalysisDropdownOpen.value
 }
 
 const toggleCallStatusDropdown = () => {
-  if (!isCallStatusDropdownOpen.value && callStatusButtonRef.value) {
-    const rect = callStatusButtonRef.value.getBoundingClientRect()
-    const viewportHeight = window.innerHeight
-    const dropdownHeight = 300
+  if (!isCallStatusDropdownOpen.value) {
+    // Определяем, какая кнопка была нажата (desktop или mobile)
+    const buttonRef = callStatusButtonRef.value || mobileCallStatusButtonRef.value
+    if (buttonRef) {
+      const rect = buttonRef.getBoundingClientRect()
+      const viewportHeight = window.innerHeight
+      const dropdownHeight = 300
 
-    // Определяем, открывать ли вверх или вниз
-    const spaceBelow = viewportHeight - rect.bottom
-    const spaceAbove = rect.top
-    const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
+      // Определяем, открывать ли вверх или вниз
+      const spaceBelow = viewportHeight - rect.bottom
+      const spaceAbove = rect.top
+      const openUpward = spaceBelow < dropdownHeight && spaceAbove > spaceBelow
 
-    callStatusDropdownPosition.value = {
-      top: openUpward ? rect.top - dropdownHeight : rect.bottom + 4,
-      left: Math.max(8, Math.min(rect.right - 256, window.innerWidth - 264)),
-      openUpward,
+      callStatusDropdownPosition.value = {
+        top: openUpward ? rect.top - dropdownHeight : rect.bottom + 4,
+        left: Math.max(8, Math.min(rect.right - 256, window.innerWidth - 264)),
+        openUpward,
+      }
     }
   }
   isCallStatusDropdownOpen.value = !isCallStatusDropdownOpen.value
@@ -324,6 +341,10 @@ const clearAllFilters = () => {
   selectedTotalScore.value = []
   searchQuery.value = ''
   currentPage.value = 1
+}
+
+const toggleMobileFilters = () => {
+  isMobileFiltersExpanded.value = !isMobileFiltersExpanded.value
 }
 
 const paginatedCandidates = computed(() => {
@@ -577,22 +598,24 @@ const closeDropdownOnClickOutside = (event: Event) => {
 
   if (
     !target.closest('[data-dropdown="resume-analysis"]') &&
-    !resumeAnalysisButtonRef.value?.contains(target)
+    !resumeAnalysisButtonRef.value?.contains(target) &&
+    !mobileResumeAnalysisButtonRef.value?.contains(target)
   ) {
     isResumeAnalysisDropdownOpen.value = false
   }
 
   if (
     !target.closest('[data-dropdown="call-status"]') &&
-    !callStatusButtonRef.value?.contains(target)
+    !callStatusButtonRef.value?.contains(target) &&
+    !mobileCallStatusButtonRef.value?.contains(target)
   ) {
     isCallStatusDropdownOpen.value = false
   }
 
-  // Добавить эту логику:
   if (
     !target.closest('[data-dropdown="total-score"]') &&
-    !totalScoreButtonRef.value?.contains(target)
+    !totalScoreButtonRef.value?.contains(target) &&
+    !mobileTotalScoreButtonRef.value?.contains(target)
   ) {
     isTotalScoreDropdownOpen.value = false
   }
@@ -619,36 +642,38 @@ if (typeof window !== 'undefined') {
           </svg>
           <span class="text-gray-900 font-medium">Панель модератора</span>
         </nav>
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900">Панель модератора</h1>
-            <p class="mt-2 text-gray-600">Управление вакансиями и кандидатами</p>
-          </div>
+        <div class="flex flex-col gap-4">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 class="text-3xl font-bold text-gray-900">Панель модератора</h1>
+              <p class="mt-2 text-gray-600">Управление вакансиями и кандидатами</p>
+            </div>
 
-          <div class="flex items-center space-x-4">
-            <!-- Search -->
-            <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg
-                  class="h-5 w-5 text-gray-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
+            <div class="flex items-center space-x-4">
+              <!-- Search - только для desktop -->
+              <div class="relative hidden sm:block">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <svg
+                    class="h-5 w-5 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                  </svg>
+                </div>
+                <input
+                  v-model="searchQuery"
+                  type="text"
+                  placeholder="Поиск кандидатов..."
+                  class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 sm:text-sm"
+                />
               </div>
-              <input
-                v-model="searchQuery"
-                type="text"
-                placeholder="Поиск кандидатов..."
-                class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 sm:text-sm"
-              />
             </div>
 
             <!-- Create Vacancy Button -->
@@ -706,6 +731,25 @@ if (typeof window !== 'undefined') {
         </div>
       </div>
 
+      <!-- Mobile Search -->
+      <div class="relative sm:hidden mb-6">
+        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+        </div>
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="Поиск кандидатов..."
+          class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 text-sm"
+        />
+      </div>
       <!-- Vacancy Filter with Search -->
       <div class="mb-6 animate-slide-up relative" style="z-index: 50">
         <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6">
@@ -922,6 +966,233 @@ if (typeof window !== 'undefined') {
               </div>
             </Transition>
           </div>
+        </div>
+      </div>
+
+      <!-- Mobile Filters -->
+      <div class="mb-6 animate-slide-up md:hidden">
+        <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
+          <!-- Header с кнопкой раскрытия -->
+          <div class="p-4 border-b border-gray-100">
+            <button
+              @click="toggleMobileFilters"
+              class="w-full flex items-center justify-between text-left focus:outline-none"
+            >
+              <div class="flex items-center space-x-3">
+                <h3 class="text-sm font-semibold text-gray-900">Дополнительные фильтры</h3>
+                <!-- Индикатор активных фильтров -->
+                <div
+                  v-if="
+                    selectedResumeAnalysis.length > 0 ||
+                    selectedCallStatus.length > 0 ||
+                    selectedTotalScore.length > 0
+                  "
+                  class="flex items-center justify-center w-5 h-5 bg-blue-100 text-blue-600 text-xs font-medium rounded-full"
+                >
+                  {{
+                    selectedResumeAnalysis.length +
+                    selectedCallStatus.length +
+                    selectedTotalScore.length
+                  }}
+                </div>
+              </div>
+              <svg
+                class="h-5 w-5 text-gray-400 transition-transform duration-200"
+                :class="{ 'rotate-180': isMobileFiltersExpanded }"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <!-- Сворачиваемый контент -->
+          <Transition
+            enter-active-class="transition-all duration-300 ease-out"
+            enter-from-class="max-h-0 opacity-0"
+            enter-to-class="max-h-96 opacity-100"
+            leave-active-class="transition-all duration-200 ease-in"
+            leave-from-class="max-h-96 opacity-100"
+            leave-to-class="max-h-0 opacity-0"
+          >
+            <div v-if="isMobileFiltersExpanded" class="overflow-hidden">
+              <div class="p-4 space-y-3">
+                <!-- Resume Analysis Filter -->
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-2">Анализ резюме</label>
+                  <div class="relative">
+                    <button
+                      ref="mobileResumeAnalysisButtonRef"
+                      @click="toggleResumeAnalysisDropdown"
+                      class="relative w-full bg-white border border-gray-300 rounded-lg shadow-sm pl-3 pr-8 py-2 text-left text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 hover:border-gray-400"
+                      :class="{
+                        'ring-2 ring-blue-600 border-transparent':
+                          selectedResumeAnalysis.length > 0,
+                      }"
+                    >
+                      <span
+                        class="block truncate"
+                        :class="{ 'text-gray-500': selectedResumeAnalysis.length === 0 }"
+                      >
+                        {{
+                          selectedResumeAnalysis.length === 0
+                            ? 'Все статусы'
+                            : selectedResumeAnalysis.length === 1
+                              ? getResumeAnalysisText(selectedResumeAnalysis[0])
+                              : `Выбрано: ${selectedResumeAnalysis.length}`
+                        }}
+                      </span>
+                      <span
+                        class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none"
+                      >
+                        <svg
+                          class="h-4 w-4 text-gray-400 transition-transform duration-200"
+                          :class="{ 'rotate-180': isResumeAnalysisDropdownOpen }"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Call Status Filter -->
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-2"
+                    >Статус собеседования</label
+                  >
+                  <div class="relative">
+                    <button
+                      ref="mobileCallStatusButtonRef"
+                      @click="toggleCallStatusDropdown"
+                      class="relative w-full bg-white border border-gray-300 rounded-lg shadow-sm pl-3 pr-8 py-2 text-left text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 hover:border-gray-400"
+                      :class="{
+                        'ring-2 ring-blue-600 border-transparent': selectedCallStatus.length > 0,
+                      }"
+                    >
+                      <span
+                        class="block truncate"
+                        :class="{ 'text-gray-500': selectedCallStatus.length === 0 }"
+                      >
+                        {{
+                          selectedCallStatus.length === 0
+                            ? 'Все статусы'
+                            : selectedCallStatus.length === 1
+                              ? getCallStatusText(selectedCallStatus[0])
+                              : `Выбрано: ${selectedCallStatus.length}`
+                        }}
+                      </span>
+                      <span
+                        class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none"
+                      >
+                        <svg
+                          class="h-4 w-4 text-gray-400 transition-transform duration-200"
+                          :class="{ 'rotate-180': isCallStatusDropdownOpen }"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Total Score Filter -->
+                <div>
+                  <label class="block text-xs font-medium text-gray-700 mb-2"
+                    >Общий результат</label
+                  >
+                  <div class="relative">
+                    <button
+                      ref="mobileTotalScoreButtonRef"
+                      @click="toggleTotalScoreDropdown"
+                      class="relative w-full bg-white border border-gray-300 rounded-lg shadow-sm pl-3 pr-8 py-2 text-left text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 hover:border-gray-400"
+                      :class="{
+                        'ring-2 ring-blue-600 border-transparent': selectedTotalScore.length > 0,
+                      }"
+                    >
+                      <span
+                        class="block truncate"
+                        :class="{ 'text-gray-500': selectedTotalScore.length === 0 }"
+                      >
+                        {{ selectedTotalScoreText }}
+                      </span>
+                      <span
+                        class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none"
+                      >
+                        <svg
+                          class="h-4 w-4 text-gray-400 transition-transform duration-200"
+                          :class="{ 'rotate-180': isTotalScoreDropdownOpen }"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M19 9l-7 7-7-7"
+                          />
+                        </svg>
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Clear Filters Button -->
+                <div
+                  v-if="
+                    selectedResumeAnalysis.length > 0 ||
+                    selectedCallStatus.length > 0 ||
+                    selectedTotalScore.length > 0
+                  "
+                  class="pt-2"
+                >
+                  <button
+                    @click="clearAllFilters"
+                    class="w-full inline-flex items-center justify-center px-3 py-2 border border-gray-300 text-xs font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200"
+                  >
+                    <svg
+                      class="-ml-1 mr-1 h-3 w-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                    Очистить фильтры
+                  </button>
+                </div>
+              </div>
+            </div>
+          </Transition>
         </div>
       </div>
 
@@ -1192,20 +1463,29 @@ if (typeof window !== 'undefined') {
               @click="openCandidate(candidate.id)"
               class="p-6 hover:bg-gray-50 transition-colors duration-150 cursor-pointer animate-card"
             >
-              <div class="flex items-center justify-between mb-3">
-                <h3 class="text-sm font-medium text-gray-900">{{ candidate.fullName }}</h3>
+              <div class="flex items-start justify-between mb-3">
+                <div class="flex-1 min-w-0 mr-3">
+                  <h3
+                    class="text-sm font-medium text-gray-900 truncate"
+                    :title="candidate.fullName"
+                  >
+                    {{ candidate.fullName }}
+                  </h3>
+                  <p
+                    class="text-xs text-gray-500 mt-1 truncate"
+                    :title="getVacancyTitle(candidate.vacancyId)"
+                  >
+                    {{ getVacancyTitle(candidate.vacancyId) }}
+                  </p>
+                </div>
                 <span
                   :class="getResumeAnalysisColor(candidate.resumeAnalysis)"
-                  class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset"
+                  class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ring-1 ring-inset flex-shrink-0"
                 >
                   {{ getResumeAnalysisText(candidate.resumeAnalysis) }}
                 </span>
               </div>
               <div class="space-y-2 mb-4">
-                <p class="text-sm text-gray-600">
-                  <span class="font-medium">Вакансия:</span>
-                  {{ getVacancyTitle(candidate.vacancyId) }}
-                </p>
                 <p class="text-sm text-gray-600">
                   <span class="font-medium">Собеседование:</span>
                   <span v-if="!shouldShowDash(candidate) && candidate.callDate">
@@ -1217,7 +1497,7 @@ if (typeof window !== 'undefined') {
                   <span v-else class="text-gray-400">—</span>
                 </p>
                 <p class="text-sm text-gray-600">
-                  <span class="font-medium">Статус Собеседования:</span>
+                  <span class="font-medium">Статус:</span>
                   <span
                     v-if="!shouldShowDash(candidate)"
                     :class="getCallStatusColor(candidate.callStatus)"
@@ -1226,6 +1506,15 @@ if (typeof window !== 'undefined') {
                     {{ getCallStatusText(candidate.callStatus) }}
                   </span>
                   <span v-else class="text-gray-400 ml-2">—</span>
+                </p>
+                <p v-if="shouldShowTotalScore(candidate)" class="text-sm text-gray-600">
+                  <span class="font-medium">Результат:</span>
+                  <span
+                    :class="getTotalScoreColor(getTotalScoreCategory(candidate.totalScore))"
+                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ring-1 ring-inset ml-2"
+                  >
+                    {{ candidate.totalScore }}/10
+                  </span>
                 </p>
               </div>
               <div class="flex items-center space-x-4">
