@@ -727,19 +727,41 @@ const fallbackToDefaultFont = (doc: any) => {
 
 <template>
   <div class="min-h-screen bg-gray-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
       <!-- Navigation breadcrumbs -->
       <nav class="flex items-center space-x-2 text-sm text-gray-500 mb-6 animate-fade-in">
-        <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <!-- Home icon - всегда видимый -->
+        <svg
+          class="h-4 w-4 text-gray-400 flex-shrink-0"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
         </svg>
-        <router-link to="/" class="hover:text-blue-600 transition-colors duration-200">
-          Панель модератора
+
+        <!-- Главная ссылка - скрываем текст на очень маленьких экранах -->
+        <router-link
+          to="/"
+          class="hover:text-blue-600 transition-colors duration-200 flex-shrink-0"
+        >
+          <span class="hidden xs:inline">Панель модератора</span>
+          <span class="xs:hidden">Главная</span>
         </router-link>
-        <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+
+        <svg
+          class="h-4 w-4 text-gray-400 flex-shrink-0"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
         </svg>
-        <span class="text-gray-900 font-medium">{{ candidateInfo.fullName }}</span>
+
+        <!-- ФИО кандидата - с обрезкой на мобильных -->
+        <span class="text-gray-900 font-medium truncate min-w-0" :title="candidateInfo.fullName">
+          {{ candidateInfo.fullName }}
+        </span>
       </nav>
 
       <!-- Loading state -->
@@ -767,22 +789,27 @@ const fallbackToDefaultFont = (doc: any) => {
       </div>
 
       <!-- Main content -->
-      <div v-else-if="hasData" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div v-else-if="hasData" class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
         <!-- Main content -->
-        <div class="lg:col-span-2 space-y-8">
+        <div class="lg:col-span-2 space-y-6 lg:space-y-8">
           <!-- Header card -->
-          <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up">
-            <div class="flex items-start justify-between mb-4">
-              <div>
-                <h1 class="text-2xl font-bold text-gray-900 mb-2">{{ candidate.title }}</h1>
-                <p class="text-gray-600">{{ candidate.vacancy }}</p>
+          <div
+            class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-4 sm:p-6 animate-slide-up"
+          >
+            <!-- Мобильная версия: вертикальное расположение -->
+            <div class="block sm:hidden">
+              <div class="mb-4">
+                <h1 class="text-xl font-bold text-gray-900 mb-2 break-words leading-tight">
+                  {{ candidate.title }}
+                </h1>
+                <p class="text-gray-600 text-sm">{{ candidate.vacancy }}</p>
               </div>
 
-              <!-- Resume download button in header -->
-              <div v-if="candidate.resume" class="flex-shrink-0 ml-4">
+              <!-- Кнопка скачивания резюме для мобильных -->
+              <div v-if="candidate.resume" class="mb-4">
                 <button
                   @click="downloadResume"
-                  class="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 ring-1"
+                  class="w-full inline-flex items-center justify-center px-4 py-2.5 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 ring-1"
                   :class="
                     canPerformActions
                       ? 'text-blue-700 bg-white hover:bg-gray-50 ring-gray-300'
@@ -791,7 +818,7 @@ const fallbackToDefaultFont = (doc: any) => {
                 >
                   <svg
                     :class="canPerformActions ? 'text-blue-500' : 'text-orange-500'"
-                    class="h-4 w-4 mr-1"
+                    class="h-4 w-4 mr-2"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -803,38 +830,124 @@ const fallbackToDefaultFont = (doc: any) => {
                       d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                     />
                   </svg>
-                  <span class="hidden sm:inline">Скачать резюме</span>
-                  <span class="sm:hidden">Скачать</span>
+                  Скачать резюме
                 </button>
+              </div>
+
+              <!-- Информация о датах для мобильных -->
+              <div class="space-y-2 text-xs text-gray-500">
+                <div class="flex items-center">
+                  <svg
+                    class="h-3 w-3 mr-2 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V6a2 2 0 012-2h4a2 2 0 012 2v1m-6 0h8m-8 0H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-2"
+                    />
+                  </svg>
+                  <span>Создано {{ formatDate(candidate.createdAt) }}</span>
+                </div>
+                <div class="flex items-center">
+                  <svg
+                    class="h-3 w-3 mr-2 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <span v-if="candidate.callDate && canPerformActions" class="truncate">
+                    Созвон {{ formatDateTime(candidate.callDate) }}
+                  </span>
+                  <span v-else-if="canPerformActions" class="text-gray-400"
+                    >Созвон не назначен</span
+                  >
+                  <span v-else class="text-gray-400">—</span>
+                </div>
               </div>
             </div>
 
-            <div class="flex items-center space-x-6 text-sm text-gray-500">
-              <div class="flex items-center">
-                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V6a2 2 0 012-2h4a2 2 0 012 2v1m-6 0h8m-8 0H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-2"
-                  />
-                </svg>
-                Создано {{ formatDate(candidate.createdAt) }}
+            <!-- Desktop версия: горизонтальное расположение -->
+            <div class="hidden sm:block">
+              <div class="flex items-start justify-between mb-4">
+                <div class="flex-1 min-w-0 mr-4">
+                  <h1 class="text-2xl font-bold text-gray-900 mb-2 break-words">
+                    {{ candidate.title }}
+                  </h1>
+                  <p class="text-gray-600">{{ candidate.vacancy }}</p>
+                </div>
+
+                <!-- Resume download button in header для desktop -->
+                <div v-if="candidate.resume" class="flex-shrink-0">
+                  <button
+                    @click="downloadResume"
+                    class="inline-flex items-center px-3 py-2 text-sm font-medium rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-all duration-200 ring-1"
+                    :class="
+                      canPerformActions
+                        ? 'text-blue-700 bg-white hover:bg-gray-50 ring-gray-300'
+                        : 'text-orange-700 bg-orange-50 hover:bg-orange-100 ring-orange-200 border border-orange-300'
+                    "
+                  >
+                    <svg
+                      :class="canPerformActions ? 'text-blue-500' : 'text-orange-500'"
+                      class="h-4 w-4 mr-1"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
+                    </svg>
+                    <span class="hidden lg:inline">Скачать резюме</span>
+                    <span class="lg:hidden">Скачать</span>
+                  </button>
+                </div>
               </div>
-              <div class="flex items-center">
-                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                  />
-                </svg>
-                <span v-if="candidate.callDate && canPerformActions">
-                  Созвон {{ formatDateTime(candidate.callDate) }}
-                </span>
-                <span v-else-if="canPerformActions" class="text-gray-400">Созвон не назначен</span>
-                <span v-else class="text-gray-400">—</span>
+
+              <!-- Информация о датах для desktop -->
+              <div class="flex items-center space-x-6 text-sm text-gray-500">
+                <div class="flex items-center">
+                  <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V6a2 2 0 012-2h4a2 2 0 012 2v1m-6 0h8m-8 0H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V9a2 2 0 00-2-2h-2"
+                    />
+                  </svg>
+                  Создано {{ formatDate(candidate.createdAt) }}
+                </div>
+                <div class="flex items-center">
+                  <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <span v-if="candidate.callDate && canPerformActions">
+                    Созвон {{ formatDateTime(candidate.callDate) }}
+                  </span>
+                  <span v-else-if="canPerformActions" class="text-gray-400"
+                    >Созвон не назначен</span
+                  >
+                  <span v-else class="text-gray-400">—</span>
+                </div>
               </div>
             </div>
 
@@ -843,8 +956,13 @@ const fallbackToDefaultFont = (doc: any) => {
               v-if="candidate.resume && candidate.resumeAnalysis === 'not_suitable'"
               class="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg"
             >
-              <div class="flex items-center space-x-2 text-xs text-orange-800">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="flex items-start space-x-2 text-xs text-orange-800">
+                <svg
+                  class="h-4 w-4 flex-shrink-0 mt-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -852,7 +970,9 @@ const fallbackToDefaultFont = (doc: any) => {
                     d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
                   />
                 </svg>
-                <span>Резюме не подходит для данной вакансии, но доступно для ознакомления</span>
+                <span class="leading-relaxed"
+                  >Резюме не подходит для данной вакансии, но доступно для ознакомления</span
+                >
               </div>
             </div>
           </div>
@@ -1407,17 +1527,31 @@ const fallbackToDefaultFont = (doc: any) => {
         </div>
         <!-- Sidebar -->
         <div class="lg:col-span-1">
-          <div class="sticky top-24 space-y-6">
-            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up">
-              <h3 class="text-lg font-semibold text-gray-900 mb-4">Информация о кандидате</h3>
+          <div class="sticky top-4 lg:top-24 space-y-4 lg:space-y-6">
+            <div
+              class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-4 lg:p-6 animate-slide-up"
+            >
+              <h3 class="text-base lg:text-lg font-semibold text-gray-900 mb-4">
+                Информация о кандидате
+              </h3>
               <div class="space-y-4">
                 <div>
                   <dt class="text-sm font-medium text-gray-500 mb-1">ФИО</dt>
-                  <dd class="text-sm text-gray-900 font-medium">{{ candidateInfo.fullName }}</dd>
+                  <dd
+                    class="text-sm text-gray-900 font-medium break-words leading-relaxed"
+                    :title="candidateInfo.fullName"
+                  >
+                    {{ candidateInfo.fullName }}
+                  </dd>
                 </div>
                 <div>
                   <dt class="text-sm font-medium text-gray-500 mb-1">Вакансия</dt>
-                  <dd class="text-sm text-gray-900">{{ candidate.vacancy }}</dd>
+                  <dd
+                    class="text-sm text-gray-900 break-words leading-relaxed"
+                    :title="candidate.vacancy"
+                  >
+                    {{ candidate.vacancy }}
+                  </dd>
                 </div>
                 <div>
                   <dt class="text-sm font-medium text-gray-500 mb-1">Анализ резюме</dt>
@@ -1463,8 +1597,10 @@ const fallbackToDefaultFont = (doc: any) => {
               </div>
             </div>
 
-            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up">
-              <h3 class="text-lg font-semibold text-gray-900 mb-4">Отчет</h3>
+            <div
+              class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-4 lg:p-6 animate-slide-up"
+            >
+              <h3 class="text-base lg:text-lg font-semibold text-gray-900 mb-4">Отчет</h3>
               <p class="text-sm text-gray-600 mb-4">
                 Скачайте полный отчет по кандидату в формате PDF
               </p>
@@ -1488,28 +1624,41 @@ const fallbackToDefaultFont = (doc: any) => {
                     d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                   />
                 </svg>
-                {{
-                  canPerformActions && !isReportPending ? 'Скачать PDF отчет' : 'Отчет недоступен'
-                }}
+                <span class="break-words text-center leading-tight">
+                  {{
+                    canPerformActions && !isReportPending ? 'Скачать PDF отчет' : 'Отчет недоступен'
+                  }}
+                </span>
               </button>
 
               <!-- Сообщение: отчёт ещё не сформирован -->
               <p
                 v-if="isReportPending"
-                class="text-xs text-yellow-700 mt-2 text-center bg-yellow-50 py-2 px-4 rounded-lg"
+                class="text-xs text-yellow-700 mt-2 text-center bg-yellow-50 py-2 px-4 rounded-lg break-words"
               >
                 ⏳ Отчёт ещё не сформирован
               </p>
             </div>
 
-            <div class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 animate-slide-up">
-              <h3 class="text-lg font-semibold text-gray-900 mb-4">Быстрые действия</h3>
-              <div class="flex space-x-2">
+            <div
+              class="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-4 lg:p-6 animate-slide-up"
+            >
+              <h3 class="text-base lg:text-lg font-semibold text-gray-900 mb-4">
+                Быстрые действия
+              </h3>
+              <div
+                class="flex flex-col sm:flex-row lg:flex-col xl:flex-row space-y-2 sm:space-y-0 sm:space-x-2 lg:space-x-0 lg:space-y-2 xl:space-y-0 xl:space-x-2"
+              >
                 <!-- Кнопка мнения модератора -->
                 <button
                   class="flex-1 inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200"
                 >
-                  <svg class="h-3 w-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    class="h-3 w-3 mr-1.5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"
@@ -1517,7 +1666,7 @@ const fallbackToDefaultFont = (doc: any) => {
                       d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
                     />
                   </svg>
-                  Мнение модератора
+                  <span class="break-words text-center leading-tight">Мнение модератора</span>
                 </button>
 
                 <!-- Кнопка удаления -->
@@ -1525,7 +1674,12 @@ const fallbackToDefaultFont = (doc: any) => {
                   @click="confirmDelete"
                   class="flex-1 inline-flex items-center justify-center px-3 py-2 text-xs font-medium text-red-600 bg-red-50 rounded-lg hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all duration-200"
                 >
-                  <svg class="h-3 w-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    class="h-3 w-3 mr-1.5 flex-shrink-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"
@@ -1533,7 +1687,7 @@ const fallbackToDefaultFont = (doc: any) => {
                       d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                     />
                   </svg>
-                  Удалить
+                  <span class="break-words text-center leading-tight">Удалить</span>
                 </button>
               </div>
             </div>
