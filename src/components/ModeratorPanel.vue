@@ -640,40 +640,39 @@ if (typeof window !== 'undefined') {
               d="M9 5l7 7-7 7"
             />
           </svg>
-          <span class="text-gray-900 font-medium">Панель модератора</span>
+          <span class="text-gray-900 font-medium">Главная</span>
         </nav>
-        <div class="flex flex-col gap-4">
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <h1 class="text-3xl font-bold text-gray-900">Панель модератора</h1>
-              <p class="mt-2 text-gray-600">Управление вакансиями и кандидатами</p>
-            </div>
 
-            <div class="flex items-center space-x-4">
-              <!-- Search - только для desktop -->
-              <div class="relative hidden sm:block">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg
-                    class="h-5 w-5 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                    />
-                  </svg>
-                </div>
-                <input
-                  v-model="searchQuery"
-                  type="text"
-                  placeholder="Поиск кандидатов..."
-                  class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 sm:text-sm"
-                />
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900">Панель модератора</h1>
+            <p class="mt-2 text-gray-600">Управление вакансиями и кандидатами</p>
+          </div>
+
+          <div class="flex items-center space-x-4">
+            <!-- Search - только для desktop -->
+            <div class="relative hidden sm:block">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg
+                  class="h-5 w-5 text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
               </div>
+              <input
+                v-model="searchQuery"
+                type="text"
+                placeholder="Поиск кандидатов..."
+                class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-xl leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-blue-600 focus:border-transparent transition-all duration-200 sm:text-sm"
+              />
             </div>
 
             <!-- Create Vacancy Button -->
@@ -730,7 +729,6 @@ if (typeof window !== 'undefined') {
           </div>
         </div>
       </div>
-
       <!-- Mobile Search -->
       <div class="relative sm:hidden mb-6">
         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

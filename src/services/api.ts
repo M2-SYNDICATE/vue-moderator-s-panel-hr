@@ -46,7 +46,6 @@ export interface LoginCredentials {
 export interface Vacancy {
   id: number
   title: string
-  // добавьте другие поля, если они есть в ответе бэкенда
 }
 
 export interface Candidate {

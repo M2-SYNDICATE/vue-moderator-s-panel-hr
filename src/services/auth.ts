@@ -43,7 +43,7 @@ class AuthService {
         const tokenData = {
           access_token: responseData.access_token,
           refresh_token: responseData.refresh_token || responseData.access_token,
-          expires_in: responseData.expires_in || 3600, // 1 час по умолчанию
+          expires_in: responseData.expires_in || 36000,
           token_type: responseData.token_type || 'Bearer',
         }
 
